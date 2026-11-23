@@ -9,10 +9,13 @@ import { MultiCoursePicker } from './MultiCoursePicker'
 import { QuestionPreview } from './QuestionPreview'
 import { ErrorText } from './ErrorText'
 import { ReformatCard, ReformatReview } from './ReformatPanel'
+import { RevisionPanel } from './RevisionPanel'
 
 const GOOGLE_DOC_MIME = 'application/vnd.google-apps.document'
 
 interface Props {
+  /** A Gemini key is saved: the reformatter may use it, and Request changes is offered. */
+  hasGemini: boolean
   site: string | null
   onSiteChange(site: string): void
   onTokenResult(result: { ok: true } | { ok: false; message: string }): void
@@ -43,7 +46,7 @@ function stampOf(iso: string): string {
  *   4. the Canvas courses,
  * then Create, which turns the screen into the per-course progress list from the mockup.
  */
-export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
+export function QuizBuilder({ hasGemini, site, onSiteChange, onTokenResult }: Props) {
   const picker = useDrivePicker()
   const id = useId()
 
@@ -349,7 +352,13 @@ export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
       </section>
 
       {/* Fixing the formatting: a tool card, and what it did */}
-      <ReformatCard docName={doc ? (doc.tabs.find((t) => t.id === doc.tabId)?.title ?? doc.name) : null} busy={reformatBusy} error={reformatError} onRun={() => void runReformat()} />
+      <ReformatCard
+        docName={doc ? (doc.tabs.find((t) => t.id === doc.tabId)?.title ?? doc.name) : null}
+        hasGemini={hasGemini}
+        busy={reformatBusy}
+        error={reformatError}
+        onRun={() => void runReformat()}
+      />
       {reformat && <ReformatReview result={reformat} onDismiss={() => setReformat(null)} />}
 
       {/* 2. The quiz */}
@@ -439,6 +448,20 @@ export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
             </label>
           )}
         </section>
+      )}
+
+      {needsSignOff && doc?.tabId && (
+        <RevisionPanel
+          fileId={doc.fileId}
+          tabId={doc.tabId}
+          hasGemini={hasGemini}
+          onApplied={async (stamp) => {
+            setReformat(null)
+            await read(doc.fileId, doc.name, doc.tabId ?? undefined, true)
+            setChecked(false)
+            setNotice(`Gemini’s change was written to the tab at ${stamp}. Check the questions again, then tick Ready for Canvas.`)
+          }}
+        />
       )}
 
       {/* 4. Courses */}

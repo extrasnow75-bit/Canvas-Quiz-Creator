@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { ChevronDown, Eye, EyeOff, KeyRound, Loader2, LogOut, SlidersHorizontal, AlertCircle } from 'lucide-react'
+import { ChevronDown, Eye, EyeOff, KeyRound, Loader2, LogOut, SlidersHorizontal, AlertCircle, Sparkles } from 'lucide-react'
 import type { GoogleCheckState, GoogleStatus } from '../types'
 import { googleLine, googleSignedIn } from './googleView'
 import { ErrorText } from './ErrorText'
@@ -24,6 +24,11 @@ interface Props {
   onGoogleSignOut(): void
   /** Incremented to ask the panel to open and take focus. */
   openRequest: number
+  /** Last four characters of the saved Gemini key, or null. Optional: the app works without it. */
+  geminiHint: string | null
+  /** Resolves with an error sentence when Gemini refuses the key, or null when it was saved. */
+  onSaveGeminiKey(key: string): Promise<string | null>
+  onRemoveGeminiKey(): Promise<void>
 }
 
 /**
@@ -267,7 +272,93 @@ export function SetupPanel(p: Props) {
             </>
           )}
         </section>
+
+        <GeminiCard hint={p.geminiHint} onSave={p.onSaveGeminiKey} onRemove={p.onRemoveGeminiKey} />
       </div>
     </div>
+  )
+}
+
+/** Optional: lets the reformatter use Gemini for what its rules cannot fix, and enables Request changes. */
+function GeminiCard({ hint, onSave, onRemove }: { hint: string | null; onSave(key: string): Promise<string | null>; onRemove(): Promise<void> }) {
+  const [value, setValue] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const id = useId()
+
+  const save = async () => {
+    if (!value.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      const problem = await onSave(value)
+      if (problem) setError(problem)
+      else setValue('')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section aria-labelledby={`${id}-h`} className={`rounded-2xl border-2 p-4 ${hint ? 'border-green-200 shadow-[0_0_0_3px_rgba(240,253,244,1)]' : 'border-gray-200'}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Sparkles className="w-4 h-4 text-[#6b4fa3] flex-shrink-0" aria-hidden="true" />
+        <span id={`${id}-h`} className="font-black text-[15px]">
+          Gemini API key <span className="font-normal text-[13px] text-gray-600">(optional)</span>
+        </span>
+      </div>
+      <p className="text-[13px] text-gray-600 mb-2.5">
+        Lets the app ask Gemini to lay out questions its own rules cannot fix, and to make changes you describe in plain English. Gemini
+        never decides which answer is correct, and a person checks everything before it goes to Canvas. Get a key at{' '}
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="font-bold text-brand underline underline-offset-2">
+          aistudio.google.com
+        </a>
+        .
+      </p>
+      {hint ? (
+        <>
+          <p className="text-xs font-mono text-gray-600 mb-3 break-all">
+            <span className="sr-only">Saved key, partially hidden: </span>
+            {'•'.repeat(12)}
+            {hint}
+          </p>
+          <button
+            onClick={() => void onRemove()}
+            className="w-full text-sm font-bold text-gray-700 border border-gray-400 rounded-lg py-2 hover:bg-gray-50 transition flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <LogOut className="w-4 h-4" aria-hidden="true" /> Remove key
+          </button>
+        </>
+      ) : (
+        <div className="flex gap-2">
+          <label htmlFor={`${id}-key`} className="sr-only">
+            Gemini API key
+          </label>
+          <input
+            id={`${id}-key`}
+            type="password"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && void save()}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Paste your Gemini API key"
+            className="flex-1 min-w-0 border-2 border-gray-500 rounded-xl px-3.5 py-2.5 text-sm font-mono focus:outline-none focus:border-brand focus:ring-2 focus:ring-blue-200 transition"
+          />
+          <button
+            onClick={() => void save()}
+            disabled={!value.trim() || busy}
+            className="flex-shrink-0 px-4 rounded-xl bg-brand hover:bg-brand-dark text-white font-black text-sm disabled:bg-gray-200 disabled:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          >
+            {busy ? 'Checking…' : 'Save key'}
+          </button>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 text-[12.5px] text-red-800">
+          {error}
+        </p>
+      )}
+    </section>
   )
 }

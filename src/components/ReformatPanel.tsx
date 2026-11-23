@@ -13,6 +13,7 @@ type Done = Extract<ReformatResult, { ok: true }>
  */
 export function ReformatCard(props: {
   docName: string | null
+  hasGemini: boolean
   busy: boolean
   error: string | null
   onRun(): void
@@ -32,7 +33,9 @@ export function ReformatCard(props: {
             The original questions are not changed.
           </p>
         </div>
-        <span className="text-[10px] font-black tracking-wide px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 flex-shrink-0">NO AI</span>
+        <span className="text-[10px] font-black tracking-wide px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 flex-shrink-0">
+          {props.hasGemini ? 'GEMINI IF NEEDED' : 'NO AI'}
+        </span>
       </div>
       <button
         onClick={props.onRun}
@@ -96,6 +99,13 @@ export function ReformatReview({ result, onDismiss }: { result: Done; onDismiss(
             Open it in Google Docs to compare <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
           </a>
         </div>
+      )}
+
+      {result.ai && (
+        <p className={`text-[12.5px] m-0 flex items-start gap-2 ${result.ai.used ? 'text-purple-900' : 'text-gray-700'}`}>
+          <span className="text-[10px] font-black tracking-wide px-2 py-0.5 rounded-full bg-purple-100 text-purple-900 flex-shrink-0">GEMINI</span>
+          <span>{result.ai.note}</span>
+        </p>
       )}
 
       {graded.length > 0 && (

@@ -22,6 +22,7 @@ export default function App() {
   const [tokenHint, setTokenHint] = useState<string | null>(null)
   const [tokenCheck, setTokenCheck] = useState<TokenCheck>({ state: 'none' })
   const [site, setSite] = useState<string | null>(null)
+  const [geminiHint, setGeminiHint] = useState<string | null>(null)
 
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus>({ signedIn: false })
   const [googleCheck, setGoogleCheck] = useState<GoogleCheckState>('none')
@@ -64,6 +65,10 @@ export default function App() {
       })
       .finally(() => setLoading(false))
 
+    window.api.credentials
+      .geminiKeyStatus()
+      .then((s) => setGeminiHint(s.hasValue ? s.hint : null))
+      .catch(() => undefined)
     window.api.app.version().then(setAppVersion).catch(() => undefined)
     window.api.app.checkUpdate().then(setUpdate).catch(() => undefined)
 
@@ -181,10 +186,23 @@ export default function App() {
                 onGoogleCancel={() => void window.api.google.cancelSignIn().catch(() => undefined)}
                 onGoogleSignOut={() => void googleSignOut()}
                 openRequest={setupOpenRequest}
+                geminiHint={geminiHint}
+                onSaveGeminiKey={async (key) => {
+                  const r = await window.api.credentials.setGeminiKey(key)
+                  if (!r.ok) return r.message
+                  const s = await window.api.credentials.geminiKeyStatus()
+                  setGeminiHint(s.hasValue ? s.hint : null)
+                  return null
+                }}
+                onRemoveGeminiKey={async () => {
+                  await window.api.credentials.setGeminiKey(null)
+                  setGeminiHint(null)
+                }}
               />
 
               {ready ? (
                 <QuizBuilder
+                  hasGemini={geminiHint !== null}
                   site={site}
                   onSiteChange={setSite}
                   onTokenResult={(r) =>
