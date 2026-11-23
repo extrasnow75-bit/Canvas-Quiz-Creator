@@ -30,6 +30,7 @@ const CREDS_PATH = join(app.getPath('userData'), 'credentials.enc')
 
 interface StoredCredentials {
   canvasToken?: string
+  geminiApiKey?: string
 }
 
 /** What the renderer is allowed to know about a stored secret. */
@@ -99,4 +100,26 @@ export function getCanvasToken(): string | null {
 
 export function canvasTokenStatus(): CredentialStatus {
   return statusOf(readAll().canvasToken)
+}
+
+// ─── Gemini API key ───────────────────────────────────────────────────────────
+//
+// Optional. Without it the reformatter works by rule alone; with it, Gemini untangles what the
+// rules could not, and "Request changes" is available. Same keychain store as the Canvas token.
+
+export function setGeminiApiKey(key: string | null): void {
+  const creds = readAll()
+  const cleaned = key?.trim() ?? ''
+  if (cleaned) creds.geminiApiKey = cleaned
+  else delete creds.geminiApiKey
+  writeAll(creds)
+}
+
+/** Main-process only. Never expose this over IPC. */
+export function getGeminiApiKey(): string | null {
+  return readAll().geminiApiKey ?? null
+}
+
+export function geminiKeyStatus(): CredentialStatus {
+  return statusOf(readAll().geminiApiKey)
 }

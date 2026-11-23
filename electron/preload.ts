@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld('api', {
   credentials: {
     setCanvasToken: (token: string | null) => invoke('credentials:setCanvasToken', token),
     canvasTokenStatus: () => invoke('credentials:canvasTokenStatus'),
+    setGeminiKey: (key: string | null) => invoke('credentials:setGeminiKey', key),
+    geminiKeyStatus: () => invoke('credentials:geminiKeyStatus'),
   },
   canvas: {
     getSite: () => invoke('canvas:getSite'),
@@ -73,5 +75,8 @@ contextBridge.exposeInMainWorld('api', {
   quiz: {
     readDoc: (args: { fileId: string; tabId?: string; refresh?: boolean }) => invoke('quiz:readDoc', args),
     reformat: (args: { fileId: string; tabId?: string }) => invoke('quiz:reformat', args),
+    proposeRevision: (args: { fileId: string; tabId: string; instruction: string }) => invoke('quiz:proposeRevision', args),
+    applyRevision: (args: { proposalId: string }) => invoke('quiz:applyRevision', args),
+    discardRevision: () => invoke('quiz:discardRevision'),
   },
 })

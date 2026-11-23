@@ -3,7 +3,9 @@ import { join } from 'path'
 import { randomUUID } from 'crypto'
 import { isAllowedExternalUrl, setAllowedCanvasHost } from './ipc/externalLinks'
 import { readSettings, updateSettings } from './ipc/settings'
-import { setCanvasToken, canvasTokenStatus, type CredentialStatus } from './ipc/credentials'
+import { setCanvasToken, canvasTokenStatus, setGeminiApiKey, geminiKeyStatus, getGeminiApiKey, type CredentialStatus } from './ipc/credentials'
+import { askForLines, validateGeminiKey } from './ipc/gemini'
+import { checkFallback, checkRevision, fallbackPrompt, revisionPrompt } from './ipc/aiReformat'
 import { createQuizInCourses, listCourses, savedOrigin, verifyToken } from './ipc/canvas'
 import { normalizeSite } from './ipc/courseList'
 import { signIn, cancelSignIn, getStatus, clearTokens, verifySignIn } from './ipc/googleAuth'
@@ -20,7 +22,8 @@ import {
   type ListFilesArgs,
 } from './ipc/googleDrive'
 import { reformatQuiz } from './ipc/reformat'
-import { addTabRequest, fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle } from './ipc/docsWrite'
+import { addTabRequest, clearTabRequest, fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle } from './ipc/docsWrite'
+import type { FixedLine, ReformatResult as RuleResult } from './ipc/reformat'
 import { docToLines, listTabs, type DocsDocument } from './ipc/docLines'
 import { parseQuiz } from './ipc/quizFormat'
 import type { Question, QuizEngine } from './ipc/quizModel'
@@ -145,6 +148,19 @@ ipcMain.handle('credentials:setCanvasToken', (_e, token: string | null) => {
   approvedHosts.clear()
 })
 ipcMain.handle('credentials:canvasTokenStatus', (): CredentialStatus => canvasTokenStatus())
+
+/** Saved only once Gemini accepts it, so a typo is caught here rather than mid-reformat. */
+ipcMain.handle('credentials:setGeminiKey', async (_e, key: string | null) => {
+  if (!key || !key.trim()) {
+    setGeminiApiKey(null)
+    return { ok: true as const }
+  }
+  const check = await validateGeminiKey(key)
+  if (!check.ok) return { ok: false as const, message: check.message ?? 'Gemini did not accept that key.' }
+  setGeminiApiKey(key)
+  return { ok: true as const }
+})
+ipcMain.handle('credentials:geminiKeyStatus', (): CredentialStatus => geminiKeyStatus())
 
 // ─── Canvas site and courses ───────────────────────────────────────────────────
 
@@ -324,7 +340,26 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
     const tabs = listTabs(doc)
     const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : tabs[0]?.id
     const source = docToLines(doc, tabId).filter((l) => !isAppHeaderLine(l.text, l.heading))
-    const r = reformatQuiz(source)
+    let r: RuleResult = reformatQuiz(source)
+
+    // Problems the rules could not fix go to Gemini, when a key is saved. Its answer only replaces
+    // the rules' answer if it passes every check in aiReformat.ts.
+    let ai: { used: boolean; note: string } | null = null
+    const ruleErrors = r.parsed.issues.filter((i) => i.severity === 'error').length
+    if (ruleErrors > 0 && getGeminiApiKey()) {
+      try {
+        const answer = await askForLines(fallbackPrompt(source))
+        const checked = checkFallback(source, r, answer.lines)
+        if (checked.ok) {
+          r = checked.result
+          ai = { used: true, note: 'Gemini laid out what the app’s rules could not. Its work passed the app’s checks: no new wording, and correct answers only where the faculty member marked them.' }
+        } else {
+          ai = { used: false, note: checked.reason }
+        }
+      } catch (e) {
+        ai = { used: false, note: `Gemini was not used: ${e instanceof Error ? e.message : String(e)}` }
+      }
+    }
 
     const problems = r.parsed.issues
       .filter((i) => i.severity === 'error')
@@ -333,7 +368,7 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
         return `${q ? `Question ${q.number ?? i.question! + 1}: ` : ''}${i.message}`
       })
     const check = r.changes.filter((c) => c.kind !== 'format').map((c) => c.message)
-    const summary = { changes: r.changes, problems, questionCount: r.parsed.questions.length }
+    const summary = { changes: r.changes, problems, questionCount: r.parsed.questions.length, ai }
 
     if (!r.lines.some((l) => l.changed)) return { ok: true as const, nothingChanged: true as const, ...summary }
 
@@ -375,6 +410,75 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
   } catch (e) {
     return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
   }
+})
+
+/** A revision Gemini proposed, held here until a person accepts or discards it. */
+let pendingRevision: { id: string; fileId: string; tabId: string; lines: FixedLine[]; check: string[]; problems: string[] } | null = null
+
+/**
+ * "Request changes": ask Gemini to revise the questions in a reformatted tab, and say what the
+ * revision would change. Nothing is written until `quiz:applyRevision`.
+ */
+ipcMain.handle('quiz:proposeRevision', async (_e, args: { fileId: string; tabId: string; instruction: string }) => {
+  try {
+    if (!args.instruction?.trim()) return { ok: false as const, message: 'Say what you would like changed.' }
+    const doc = (await getGoogleDocStructure(args.fileId)) as DocsDocument
+    const current = docToLines(doc, args.tabId).filter((l) => !isAppHeaderLine(l.text, l.heading))
+    const answer = await askForLines(revisionPrompt(current.map((l) => l.text), args.instruction))
+    const checked = checkRevision(current, answer.lines, answer.notes)
+    if (!checked.ok) return { ok: false as const, message: checked.reason }
+    const problems = checked.parsed.issues
+      .filter((i) => i.severity === 'error')
+      .map((i) => {
+        const q = i.question !== null ? checked.parsed.questions[i.question] : null
+        return `${q ? `Question ${q.number ?? i.question! + 1}: ` : ''}${i.message}`
+      })
+    pendingRevision = {
+      id: randomUUID(),
+      fileId: args.fileId,
+      tabId: args.tabId,
+      lines: checked.lines,
+      check: checked.changes.filter((c) => c.kind !== 'format').map((c) => c.message),
+      problems,
+    }
+    return { ok: true as const, proposalId: pendingRevision.id, changes: checked.changes, notes: checked.notes, problems }
+  } catch (e) {
+    return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
+  }
+})
+
+/** Write an accepted revision over the reformatted tab, with a new time stamp at the top. */
+ipcMain.handle('quiz:applyRevision', async (_e, args: { proposalId: string }) => {
+  const p = pendingRevision
+  if (!p || p.id !== args.proposalId) return { ok: false as const, message: 'That revision is no longer available. Ask for it again.' }
+  try {
+    const doc = (await getGoogleDocStructure(p.fileId)) as DocsDocument & { tabs?: Array<any> }
+    const find = (tabs: any[] | undefined): any => {
+      for (const t of tabs ?? []) {
+        if (t.tabProperties?.tabId === p.tabId) return t
+        const inner = find(t.childTabs)
+        if (inner) return inner
+      }
+      return null
+    }
+    const tab = find(doc.tabs)
+    const content: Array<{ endIndex?: number }> = tab?.documentTab?.body?.content ?? []
+    const end = content[content.length - 1]?.endIndex ?? 1
+    const when = new Date()
+    const clear = clearTabRequest(p.tabId, end)
+    const requests = [...(clear ? [clear] : []), ...fillTabRequests(p.tabId, p.lines, { check: p.check, needsPerson: p.problems }, when)]
+    const { revisionId } = await docsBatchUpdate(p.fileId, requests)
+    if (revisionId) appWrites.set(p.fileId, revisionId)
+    pendingRevision = null
+    lastDoc = null
+    return { ok: true as const, stamp: stampFor(when), url: tabUrl(p.fileId, p.tabId) }
+  } catch (e) {
+    return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
+  }
+})
+
+ipcMain.handle('quiz:discardRevision', () => {
+  pendingRevision = null
 })
 
 // ─── App lifecycle ─────────────────────────────────────────────────────────────

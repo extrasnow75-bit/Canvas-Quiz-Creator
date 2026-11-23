@@ -69,7 +69,13 @@ interface ReformatSummary {
   /** What the reformatter could not fix, already phrased for a person. */
   problems: string[]
   questionCount: number
+  /** Whether Gemini was asked, and what came of it. Null when it was not needed or no key is saved. */
+  ai: { used: boolean; note: string } | null
 }
+
+export type ProposeRevisionResult =
+  | { ok: true; proposalId: string; changes: ReformatChange[]; notes: string; problems: string[] }
+  | { ok: false; message: string }
 
 export type ReformatResult =
   | (ReformatSummary & { ok: true; nothingChanged: true })
@@ -103,6 +109,8 @@ declare global {
       credentials: {
         setCanvasToken(token: string | null): Promise<void>
         canvasTokenStatus(): Promise<{ hasValue: boolean; hint: string }>
+        setGeminiKey(key: string | null): Promise<{ ok: true } | { ok: false; message: string }>
+        geminiKeyStatus(): Promise<{ hasValue: boolean; hint: string }>
       }
       canvas: {
         getSite(): Promise<string | null>
@@ -145,6 +153,9 @@ declare global {
       quiz: {
         readDoc(args: { fileId: string; tabId?: string; refresh?: boolean }): Promise<ReadDocResult>
         reformat(args: { fileId: string; tabId?: string }): Promise<ReformatResult>
+        proposeRevision(args: { fileId: string; tabId: string; instruction: string }): Promise<ProposeRevisionResult>
+        applyRevision(args: { proposalId: string }): Promise<{ ok: true; stamp: string; url: string } | { ok: false; message: string }>
+        discardRevision(): Promise<void>
       }
     }
   }
