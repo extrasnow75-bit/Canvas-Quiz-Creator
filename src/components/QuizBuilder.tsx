@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { AlertCircle, AlertTriangle, CheckCircle2, Clock, ExternalLink, FileText, Loader2, RefreshCw, Send, Square } from 'lucide-react'
-import type { CourseChoice, CourseRunStatus, ProgressEvent, Question, QuizEngine, ReadDocResult } from '../types'
+import type { CourseChoice, CourseRunStatus, ProgressEvent, Question, QuizEngine, ReadDocResult, ReformatResult } from '../types'
 import type { Issue } from '../../electron/ipc/quizModel'
 import { engineIssues } from '../../electron/ipc/quizFormat'
 import { canBuild } from '../../electron/ipc/quizPayloads'
@@ -8,6 +8,7 @@ import { useDrivePicker } from '../contexts/DrivePickerContext'
 import { MultiCoursePicker } from './MultiCoursePicker'
 import { QuestionPreview } from './QuestionPreview'
 import { ErrorText } from './ErrorText'
+import { ReformatCard, ReformatReview } from './ReformatPanel'
 
 const GOOGLE_DOC_MIME = 'application/vnd.google-apps.document'
 
@@ -18,6 +19,21 @@ interface Props {
 }
 
 type Loaded = Extract<ReadDocResult, { ok: true }> & { fileId: string; name: string }
+
+/** A tab or Doc the reformatter wrote: its questions need a person's check before Canvas. */
+const isReformatted = (doc: Loaded) => {
+  const tab = doc.tabs.find((t) => t.id === doc.tabId)
+  return /^Reformatted questions/i.test(tab?.title ?? '') || /Reformatted questions$/i.test(doc.name)
+}
+
+/** Enough of the questions to tell whether a re-read changed them. */
+const fingerprint = (qs: Question[]) => JSON.stringify(qs.map(({ line: _l, ...q }) => q))
+
+function stampOf(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+}
 
 /**
  * The create-a-quiz workflow, as numbered cards:
@@ -44,6 +60,14 @@ export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
   const [run, setRun] = useState<{ jobId: string; statuses: Record<string, CourseRunStatus>; done: boolean; stopping: boolean } | null>(null)
   const [runError, setRunError] = useState<string | null>(null)
   const [blocked, setBlocked] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  // Reformatting, and the person's sign-off on the result.
+  const [reformatBusy, setReformatBusy] = useState(false)
+  const [reformatError, setReformatError] = useState<string | null>(null)
+  const [reformat, setReformat] = useState<Extract<ReformatResult, { ok: true }> | null>(null)
+  /** "A person has checked these reformatted questions": required before a reformatted tab goes to Canvas. */
+  const [checked, setChecked] = useState(false)
   const resultsRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
@@ -52,7 +76,7 @@ export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
 
   // ── Reading the document ──────────────────────────────────────────────────────
 
-  const read = async (fileId: string, name: string, tabId?: string, refresh = false) => {
+  const read = async (fileId: string, name: string, tabId?: string, refresh = false): Promise<Loaded | null> => {
     setDocBusy(true)
     setDocError(null)
     setBlocked(false)
@@ -60,14 +84,47 @@ export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
       const res = await window.api.quiz.readDoc({ fileId, tabId, refresh })
       if (!res.ok) {
         setDocError(res.message)
-        return
+        return null
       }
-      setDoc({ ...res, fileId, name })
+      const loaded = { ...res, fileId, name }
+      // A different Doc or tab is a different set of questions: any earlier sign-off was for those.
+      if (!doc || doc.fileId !== fileId || doc.tabId !== res.tabId) setChecked(false)
+      // A hand edit keeps the sign-off, as in Canvas Rubric Creator, but is always announced.
+      setNotice(res.manualEditAt ? `Manual edit detected at ${stampOf(res.manualEditAt)}. The preview below shows the Doc as it is now. Time stamp at the top of the tab may have changed.` : null)
+      setDoc(loaded)
       setTitle((t) => (t && doc?.fileId === fileId ? t : res.title || name))
+      return loaded
     } catch (err) {
       setDocError(err instanceof Error ? err.message : 'Could not read that document.')
+      return null
     } finally {
       setDocBusy(false)
+    }
+  }
+
+  const runReformat = async () => {
+    if (!doc) return
+    setReformatBusy(true)
+    setReformatError(null)
+    setBlocked(false)
+    try {
+      const res = await window.api.quiz.reformat({ fileId: doc.fileId, tabId: doc.tabId ?? undefined })
+      if (!res.ok) {
+        setReformatError(res.message)
+        return
+      }
+      setReformat(res)
+      if (!res.nothingChanged) {
+        // The app has written new questions: whatever was signed off before is not these.
+        setChecked(false)
+        await read(res.target.fileId, res.target.name, res.target.tabId ?? undefined, true)
+        setNotice(null)
+      }
+      setTimeout(() => document.getElementById('reformat-review')?.focus(), 0)
+    } catch (err) {
+      setReformatError(err instanceof Error ? err.message : 'The reformat did not work.')
+    } finally {
+      setReformatBusy(false)
     }
   }
 
@@ -110,8 +167,10 @@ export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
   const buildable = engine ? questions.filter((q) => canBuild(q, engine)) : []
   const totalPoints = buildable.reduce((n, q) => n + (q.type === 'text_only' ? 0 : (q.points ?? 1)), 0)
 
+  const needsSignOff = !!doc && isReformatted(doc)
   const missing: string[] = []
   if (!doc) missing.push('choose the Google Doc')
+  if (needsSignOff && !checked) missing.push('confirm a person has checked the reformatted questions')
   if (doc && buildable.length === 0) missing.push('have at least one question the app can build')
   if (!title.trim()) missing.push('give the quiz a title')
   if (courses.length === 0) missing.push('tick at least one course')
@@ -125,9 +184,16 @@ export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
   }, [])
 
   const create = async () => {
-    if (!engine || missing.length > 0) return
+    if (!engine || missing.length > 0 || !doc) return
     if (errorCount > 0) {
       setBlocked(true)
+      return
+    }
+    // Read the Doc once more, so Canvas gets exactly what it says now, not what it said earlier.
+    const fresh = await read(doc.fileId, doc.name, doc.tabId ?? undefined, true)
+    if (!fresh) return
+    if (fingerprint(fresh.result.questions) !== fingerprint(questions)) {
+      setNotice('The Google Doc changed since the preview was made. The preview now shows the questions as they are. Check them, then choose Create again.')
       return
     }
     const jobId = crypto.randomUUID()
@@ -266,6 +332,12 @@ export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
           </div>
         )}
 
+        {notice && (
+          <p role="status" className="mt-2.5 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-300 p-2.5 text-[12.5px] text-amber-900">
+            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-700" aria-hidden="true" />
+            <span>{notice}</span>
+          </p>
+        )}
         {docError && (
           <p className="mt-2.5 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-2.5 text-[12.5px] text-red-800">
             <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
@@ -275,6 +347,10 @@ export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
           </p>
         )}
       </section>
+
+      {/* Fixing the formatting: a tool card, and what it did */}
+      <ReformatCard docName={doc ? (doc.tabs.find((t) => t.id === doc.tabId)?.title ?? doc.name) : null} busy={reformatBusy} error={reformatError} onRun={() => void runReformat()} />
+      {reformat && <ReformatReview result={reformat} onDismiss={() => setReformat(null)} />}
 
       {/* 2. The quiz */}
       <section aria-labelledby={`${id}-quiz`} className="rounded-2xl border-2 border-gray-200 bg-white p-4">
@@ -353,6 +429,15 @@ export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
               <QuestionPreview key={i} q={q} index={i} issues={byQuestion(i)} />
             ))}
           </ol>
+          {needsSignOff && (
+            <label className={`mt-3 flex items-start gap-2.5 rounded-xl border-2 p-3 cursor-pointer ${checked ? 'border-green-300 bg-green-50' : 'border-purple-300 bg-white'}`}>
+              <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} className="mt-0.5 w-4 h-4 accent-brand flex-shrink-0" />
+              <span className="text-[13px] text-gray-800">
+                <b className="text-gray-900">Ready for Canvas.</b> A person has compared these reformatted questions with the originals,
+                including every answer and point value the app changed.
+              </span>
+            </label>
+          )}
         </section>
       )}
 
@@ -368,8 +453,25 @@ export function QuizBuilder({ site, onSiteChange, onTokenResult }: Props) {
                 {badQuestions > 0 ? `${badQuestions} question${badQuestions === 1 ? ' has' : 's have'} formatting problems.` : 'The document has formatting problems.'}
               </p>
               <p className="text-[12.5px] text-gray-700 mt-1 mb-0">
-                Fix the items marked in red in the Google Doc, then choose <b>Read again</b>. Nothing was sent to Canvas.
+                Nothing was sent to Canvas. The app can try to fix the formatting in a new tab of the Doc, leaving the original questions
+                as they are, or you can fix the items marked in red in the Doc and choose <b>Read again</b>.
               </p>
+              <div className="flex flex-wrap gap-2 mt-2.5">
+                <button
+                  onClick={() => void runReformat()}
+                  disabled={reformatBusy}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-brand hover:bg-brand-dark text-white text-xs font-black focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                >
+                  {reformatBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : null}
+                  {reformatBusy ? 'Reformatting…' : 'Try to fix the formatting'}
+                </button>
+                <button
+                  onClick={() => setBlocked(false)}
+                  className="px-3.5 py-2 rounded-lg border border-gray-400 bg-white text-gray-800 text-xs font-bold hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  I will fix it myself
+                </button>
+              </div>
             </div>
           </div>
         </div>
