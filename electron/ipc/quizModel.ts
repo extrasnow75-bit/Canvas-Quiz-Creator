@@ -96,6 +96,13 @@ export interface ParseResult {
   issues: Issue[]
 }
 
+/**
+ * A line that starts a question in another style: "Question 3", "Question 3:", "Q3.",
+ * "Question 3  2 pts". Often typed as a heading — Canvas prints each question that way — so a
+ * heading that matches this is a question, never a section or quiz title.
+ */
+export const QUESTION_HEADER_RE = /^(?:question|q)\s*#?\s*\d{1,4}\b/i
+
 /** One line of a document, as the parser sees it. */
 export interface DocLine {
   text: string

@@ -113,3 +113,40 @@ describe('the code reformatter', () => {
     expect(texts(r).slice(0, 2)).toEqual(['Module 3 Quiz', 'Answer every question.'])
   })
 })
+
+describe('"Question N" headings with the question on the next line', () => {
+  const heading = (text: string): DocLine => ({ text, bold: true, bullet: false, heading: true, headingLevel: 3 })
+  const doc = [
+    heading('Question 1'),
+    line('The bone is covered on the outer surfaces by a fibrous membrane called the:'),
+    line('A. periosteum B. endosteum C. trabeculae D. cortices'),
+    line('Answer: A'),
+    heading('Question 2'),
+    line('The hollow, tubelike structure within the diaphysis is the:'),
+    line('A. epiphyses B. medullary cavity C. compact bone D. metaphysis'),
+    line('Answer: B', { bold: true }),
+    line('ZELMAN', { bold: true }),
+  ]
+
+  it('reads every question, splits the choices and uses the answers', () => {
+    const r = reformatQuiz(doc)
+    expect(r.parsed.questions.map((q) => [q.number, q.text, q.answers.find((a) => a.correct)?.text])).toEqual([
+      [1, 'The bone is covered on the outer surfaces by a fibrous membrane called the:', 'periosteum'],
+      [2, 'The hollow, tubelike structure within the diaphysis is the:', 'medullary cavity'],
+    ])
+    expect(texts(r).slice(0, 6)).toEqual([
+      '1) The bone is covered on the outer surfaces by a fibrous membrane called the:',
+      '*a) periosteum',
+      'b) endosteum',
+      'c) trabeculae',
+      'd) cortices',
+      '2) The hollow, tubelike structure within the diaphysis is the:',
+    ])
+  })
+
+  it('keeps the stray line and flags it rather than dropping it', () => {
+    const r = reformatQuiz(doc)
+    expect(texts(r)).toContain('ZELMAN')
+    expect(r.parsed.issues.some((i) => /not understood/.test(i.message) && /ZELMAN/.test(i.message))).toBe(true)
+  })
+})

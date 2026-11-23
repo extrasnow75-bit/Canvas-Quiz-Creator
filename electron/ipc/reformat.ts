@@ -17,7 +17,7 @@
  * The result goes into a new tab of the same Google Doc for a person to check (docsWrite.ts), with
  * every changed line highlighted. Pure: no network, no Electron.
  */
-import type { DocLine, ParseResult } from './quizModel'
+import { QUESTION_HEADER_RE, type DocLine, type ParseResult } from './quizModel'
 import { parseQuiz } from './quizFormat'
 
 export interface FixedLine {
@@ -114,6 +114,8 @@ interface Group {
   questionOrig: string
   body: Source[]
   choices: Choice[]
+  /** Text after the choices: kept after them, where the parser flags it for a person. */
+  trailing: Source[]
   /** Letters from an "Answer: B" line under the question. */
   key: string[] | null
   /** Lines removed from this question because they were understood (answer notes). */
@@ -170,7 +172,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
   let current: Group | null = null
 
   for (const l of src) {
-    if (l.heading) {
+    if (l.heading && !QUESTION_HEADER_RE.test(l.text)) {
       // A heading between questions is a section title; keep it where it was.
       if (current) current.body.push(l)
       else preamble.push(l)
@@ -207,6 +209,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
         questionOrig: l.orig,
         body: [],
         choices: [],
+        trailing: [],
         key: null,
         absorbed: 0,
       }
@@ -233,8 +236,15 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
       current.choices.push(choice)
       continue
     }
-    // More question text, or text after the choices: kept as it is, and the parser reports the latter.
-    current.body.push(l)
+    // "Question 3" on a line of its own (often a heading): the next line is the question.
+    if (current.text === '' && current.choices.length === 0 && current.body.length === 0) {
+      current.text = l.text
+      current.questionOrig = ''
+      continue
+    }
+    // More question text before the choices; anything after them stays after them.
+    if (current.choices.length === 0) current.body.push(l)
+    else current.trailing.push(l)
   }
 
   // Pass 4: answers, question by question.
@@ -257,6 +267,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
       const text = `${c.correct ? '*' : ''}${c.letter}) ${c.text}`
       lines.push({ text, changed: text !== c.orig, heading: false })
     }
+    for (const t of g.trailing) lines.push({ text: t.text, changed: t.text !== t.orig, heading: t.heading, headingLevel: t.headingLevel })
   }
 
   for (const [what, n] of formatCounts) changes.push({ kind: 'format', question: null, message: `${what} (${n} ${n === 1 ? 'line' : 'lines'}).` })

@@ -65,3 +65,15 @@ describe('splitting a Doc into quizzes', () => {
     expect(quizSections(r)).toHaveLength(2)
   })
 })
+
+describe('"Question N" headings', () => {
+  it('are questions, not quiz titles', () => {
+    const r = splitDocument([h(3, 'Question 1'), t('What?'), t('A. x B. y'), h(3, 'Question 2'), t('Why?')])
+    expect(r.level).toBeNull()
+    expect(quizSections(r)).toHaveLength(1)
+  })
+  it('still split under real quiz headings', () => {
+    const r = splitDocument([h(1, 'Quiz A'), h(3, 'Question 1'), t('What?'), h(1, 'Quiz B'), h(3, 'Question 1'), t('Why?')])
+    expect(quizSections(r).map((s) => s.title)).toEqual(['Quiz A', 'Quiz B'])
+  })
+})

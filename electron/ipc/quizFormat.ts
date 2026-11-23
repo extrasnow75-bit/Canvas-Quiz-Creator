@@ -222,8 +222,12 @@ export function parseQuiz(input: Array<DocLine | string>): ParseResult {
     const text = clean(raw.text)
     if (!text) return
 
-    // Headings are section titles ("Multiple Choice Template:", "Module 3 Quiz"), never content.
-    if (raw.heading) return
+    // Headings are section titles ("Multiple Choice Template:", "Module 3 Quiz"), never content —
+    // except "Question 3" typed as a heading, which is a question in another format.
+    if (raw.heading) {
+      if (OFF_TEMPLATE_QUESTION_RE.test(text)) issue('error', OFF_TEMPLATE_MESSAGE, i, draft ? questions.length : null)
+      return
+    }
 
     const pointsMatch = text.match(POINTS_RE)
     if (pointsMatch) {

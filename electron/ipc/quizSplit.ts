@@ -14,7 +14,7 @@
  *
  * Pure.
  */
-import type { DocLine } from './quizModel'
+import { QUESTION_HEADER_RE, type DocLine } from './quizModel'
 
 /** A line that looks like quiz content, in the template format or close to it. */
 const QUESTIONISH = /^\s*(?:(?:\d{1,4}|#)\s*[).:]|(?:question|q)\s*#?\s*\d{1,4}\b|points?\s*[:=]|type\s*:)/i
@@ -37,7 +37,8 @@ export interface SplitResult {
   segments: Segment[]
 }
 
-const isHeading = (l: DocLine) => l.heading && (l.headingLevel ?? 0) >= 1
+/** A real section heading: a "Question 3" heading is a question, not a section. */
+const isHeading = (l: DocLine) => l.heading && (l.headingLevel ?? 0) >= 1 && !QUESTION_HEADER_RE.test(l.text.trim())
 
 /** The heading level directly above most of the questions, or null if there is none. */
 function levelsAbove(lines: DocLine[]): Map<number, number> {
@@ -45,7 +46,7 @@ function levelsAbove(lines: DocLine[]): Map<number, number> {
   let nearest: number | null = null
   for (const l of lines) {
     if (isHeading(l)) nearest = l.headingLevel!
-    else if (nearest !== null && QUESTIONISH.test(l.text)) tally.set(nearest, (tally.get(nearest) ?? 0) + 1)
+    else if (nearest !== null && (QUESTIONISH.test(l.text) || QUESTION_HEADER_RE.test(l.text))) tally.set(nearest, (tally.get(nearest) ?? 0) + 1)
   }
   return tally
 }
@@ -87,7 +88,7 @@ export function splitDocument(lines: DocLine[], chosenLevel?: number | null): Sp
   // A heading with no questions under it (an "Instructions" section) is not a quiz.
   const settled: Segment[] = []
   for (const seg of segments) {
-    if (seg.kind === 'quiz' && !seg.section.lines.some((l) => !l.heading && QUESTIONISH.test(l.text))) {
+    if (seg.kind === 'quiz' && !seg.section.lines.some((l) => QUESTIONISH.test(l.text) || QUESTION_HEADER_RE.test(l.text))) {
       const lines = [seg.section.heading!, ...seg.section.lines]
       const last = settled[settled.length - 1]
       if (last?.kind === 'other') last.lines.push(...lines)
