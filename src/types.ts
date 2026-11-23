@@ -83,6 +83,8 @@ export interface FixPreview {
   needsPersonMessages: string[]
   /** The automatic fixes would change at least one line. */
   anyChange: boolean
+  /** Questions the app would find after the automatic fixes: can be more than it reads now. */
+  questionsAfterFix: number
 }
 
 export interface ReformatChange {

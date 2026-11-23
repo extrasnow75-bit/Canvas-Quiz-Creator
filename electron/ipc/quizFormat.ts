@@ -57,6 +57,13 @@ const CATEGORY_RE = /^([^:=]{1,80}):\s*(.*)$/
 const CHOOSE_ONE_RE = /^choose\s+(?:1|one)\s*:?\s*$/i
 const REQUIREMENT_RE = /^requirement\s*:\s*(.*)$/i
 const KEY_VALUE_RE = /^([a-z+/\- ]+?)\s*=\s*(.*)$/i
+/**
+ * A question written some other way: "Question 3:", "Q3.", "3:", "3 -". The template wants "3)".
+ * Such a line is a problem to fix, never a note to skip: skipping it would silently drop a question.
+ */
+const OFF_TEMPLATE_QUESTION_RE = /^(?:(?:question|q)\s*#?\s*\d{1,4}\b|\d{1,4}\s*(?::|\s-)\s*\S)/i
+const OFF_TEMPLATE_MESSAGE =
+  'This looks like a question, but it is not in the template format ("3) Question"), so it was not read. The automatic fixes can usually rewrite it.'
 const CALCULATOR_RE = /^show\s+(?:on[-\s]?screen\s+)?calculator\s*:?\s*(.*)$/i
 const FILE_LIMIT_RE = /^limit\s+(?:the\s+)?(?:file\s+number|number\s+of\s+files)\s*:\s*(.*)$/i
 const FILE_TYPES_RE = /^restrict\s+file\s+types?\s*:\s*(.*)$/i
@@ -254,7 +261,9 @@ export function parseQuiz(input: Array<DocLine | string>): ParseResult {
     }
 
     if (!draft) {
-      // Text before the first question: instructions, a title, notes to the developer. Not quiz content.
+      // Text before the first question: instructions, a title, notes to the developer. Not quiz
+      // content — unless it is a question in another format, which must not vanish unnoticed.
+      if (OFF_TEMPLATE_QUESTION_RE.test(text)) issue('error', OFF_TEMPLATE_MESSAGE, i, null)
       return
     }
 
@@ -421,7 +430,8 @@ function absorbLine(draft: Draft, text: string, raw: DocLine, i: number, report:
     return
   }
 
-  report('warning', `This line was not understood and was left out: "${shorten(text)}"`, i)
+  if (OFF_TEMPLATE_QUESTION_RE.test(text)) report('error', OFF_TEMPLATE_MESSAGE, i)
+  else report('warning', `This line was not understood and was left out: "${shorten(text)}"`, i)
 }
 
 function hasNumericValues(fields: Record<string, string>): boolean {

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { AlertCircle, AlertTriangle, Link2, Loader2, RefreshCw, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Loader2, RefreshCw, X } from 'lucide-react'
+import { CoursesIcon, IconTile, STEP_TILE } from './Icons'
 import type { CourseChoice } from '../types'
 import { countCourses, DEFAULT_SITE, NO_TERM_GROUP, siteHost, visibleGroups } from './courseFilter'
 import { ErrorText } from './ErrorText'
@@ -87,11 +88,16 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
 
   return (
     <section aria-labelledby={`${id}-h`} className={`rounded-2xl border-2 bg-white p-4 ${n > 0 ? 'border-green-200 shadow-[0_0_0_3px_rgba(240,253,244,1)]' : 'border-gray-200'}`}>
-      <div className="flex items-center gap-2 mb-1">
-        <Link2 className="w-4 h-4 text-brand flex-shrink-0" aria-hidden="true" />
-        <h2 id={`${id}-h`} className="font-black text-[15px] m-0">
-          Canvas courses
-        </h2>
+      <div className="flex items-center gap-3 mb-1.5">
+        <IconTile color={STEP_TILE.courses}>
+          <CoursesIcon />
+        </IconTile>
+        <div>
+          <p className="m-0 text-[11px] font-black tracking-wider text-gray-700">STEP 4</p>
+          <h2 id={`${id}-h`} className="font-black text-[15px] m-0">
+            Canvas courses
+          </h2>
+        </div>
         <span className="ml-auto text-xs text-gray-600 flex items-center gap-1.5">
           {editingSite ? null : (
             <>
@@ -117,7 +123,7 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
         </span>
       </div>
       <p className="text-[13px] text-gray-600 mb-3">
-        Tick every course that should get this quiz. The same quiz is created, unpublished, in each one.
+        Tick every course that should get these quizzes. Each quiz is created, unpublished, in every course you tick.
       </p>
 
       {editingSite && (

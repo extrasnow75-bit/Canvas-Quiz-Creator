@@ -416,6 +416,8 @@ function previewFixes(title: string | null, current: ReturnType<typeof parseQuiz
     wouldChange: trial.changes.map((c) => c.message),
     needsPersonMessages: errorsNow === 0 ? [] : problemsOf(title, trial.parsed, several),
     anyChange: trial.lines.some((l) => l.changed),
+    /** Questions the app would find after the automatic fixes: can be more than it reads now. */
+    questionsAfterFix: Math.max(current.questions.length, trial.parsed.questions.length),
   }
 }
 

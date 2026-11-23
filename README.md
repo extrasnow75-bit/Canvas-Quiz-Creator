@@ -12,20 +12,25 @@ been tested against a real Canvas course.
 
 ## What it does
 
-1. **Quiz questions.** Choose a Google Doc from Drive or paste its link. If the Doc has tabs,
-   choose the tab with the questions.
-2. **The quiz.** Title, optional instructions for students, Classic or New Quizzes.
-3. **Check the questions.** Every question as the app understood it, with the correct answers
-   ticked and any problems marked on the question they belong to.
-4. **Canvas courses.** Tick one or more courses. The list shows courses where you are a teacher,
-   TA or designer, including custom roles built on those, such as Course Administrator.
-5. **Create.** The same unpublished quiz is created in each course, one course at a time, with a
-   per-course result and an "Open in Canvas" link.
+1. **Quiz questions.** Choose a Google Doc in the Drive picker built into step 1, or paste its
+   link. A Doc can hold several quizzes: each heading above a set of questions starts a quiz and
+   gives it its title (the app uses the heading level directly above the questions, and you can
+   choose another). If the Doc has tabs, choose the tab.
+2. **Which kind of quiz?** The Classic Quizzes and New Quizzes cards say how many of the Doc's
+   quizzes, and questions, fit each. A table sets Classic or New for each quiz, lets you rename or
+   leave out a quiz, and shows its questions.
+3. **Check and fix the questions.** How many problems there are, how many the automatic fixes
+   (no AI) can clear, and how many need a person. Gemini is offered only as the last resort.
+4. **Canvas courses.** Tick one or more courses: every quiz in the Doc goes to the same courses.
+   The list shows courses where you are a teacher, TA or designer, including custom roles built on
+   those, such as Course Administrator.
+5. **Launch.** Each quiz is created, unpublished, as its chosen type in every course, one at a
+   time, with results grouped by course and an "Open in Canvas" link for each.
 
 ## Fixing badly formatted questions
 
-The **Fix quiz formatting** card, or **Try to fix the formatting** when Create finds problems, writes
-the questions in the template format to a new **Reformatted questions** tab of the same Google Doc.
+**Fix automatically** in step 3 writes every quiz in the template format to a new **Reformatted
+questions** tab of the same Google Doc, each under its own heading.
 The original tab is not touched. The new tab starts with a time stamp and notes, and every line the
 app changed is highlighted, so the faculty member can compare it with the original.
 
@@ -35,8 +40,8 @@ app changed is highlighted, so the faculty member can compare it with the origin
 2. **Gemini if needed,** when a Gemini key is saved and problems remain. Its answer is used only if
    it adds no wording and invents no point values, and correct answers always come from the faculty
    member's own marks, never from Gemini.
-3. **A person reviews.** The summary lists answer and point changes first. A quiz built from a
-   reformatted tab cannot be created until someone ticks **Ready for Canvas**.
+3. **A person reviews.** The summary lists answer and point changes first. A quiz from a
+   reformatted tab cannot be launched until someone ticks **Checked** for it.
 4. **Changes after that:** edit the tab by hand in Google Docs and choose **Read again** (the app
    says "Manual edit detected at …"), or describe the change for Gemini and accept or discard the
    change list it produces.

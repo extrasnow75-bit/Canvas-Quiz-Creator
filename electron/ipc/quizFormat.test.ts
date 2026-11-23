@@ -274,3 +274,16 @@ describe('Google Docs automatic numbering', () => {
     ])
   })
 })
+
+describe('questions in another format are problems, not notes', () => {
+  it('reports "Question 1:" before the first template question', () => {
+    const r = parseQuiz(['Points: 1', 'Question 1: Largest planet?', 'A. Mars', 'B. Jupiter', 'Points: 1', '2) Pick', '*a) x', 'b) y'])
+    expect(r.questions).toHaveLength(1)
+    expect(errors(r).some((i) => /not in the template format/.test(i.message))).toBe(true)
+  })
+
+  it('reports one after a template question', () => {
+    const r = parseQuiz(['Points: 1', '1) Pick', '*a) x', 'b) y', 'Question 2: Why?'])
+    expect(errors(r).some((i) => /not in the template format/.test(i.message))).toBe(true)
+  })
+})
