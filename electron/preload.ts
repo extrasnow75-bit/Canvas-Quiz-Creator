@@ -57,6 +57,7 @@ contextBridge.exposeInMainWorld('api', {
     listCourses: (args: { site: string }) => invoke('canvas:listCourses', args),
     verifyToken: () => invoke('canvas:verifyToken'),
     createQuiz: (args: unknown) => invoke('canvas:createQuiz', args),
+    createQuizzes: (args: unknown) => invoke('canvas:createQuizzes', args),
     stopAfterCourse: (jobId: string) => invoke('canvas:stopAfterCourse', jobId),
     onProgress: (cb: (p: unknown) => void) => subscribe('quiz:progress', cb),
   },
@@ -73,8 +74,8 @@ contextBridge.exposeInMainWorld('api', {
     resolveUrl: (url: string) => invoke('drive:resolveUrl', url),
   },
   quiz: {
-    readDoc: (args: { fileId: string; tabId?: string; refresh?: boolean }) => invoke('quiz:readDoc', args),
-    reformat: (args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string }) => invoke('quiz:reformat', args),
+    readDoc: (args: { fileId: string; tabId?: string; refresh?: boolean; level?: number | null }) => invoke('quiz:readDoc', args),
+    reformat: (args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string; level?: number | null }) => invoke('quiz:reformat', args),
     proposeRevision: (args: { fileId: string; tabId: string; instruction: string }) => invoke('quiz:proposeRevision', args),
     applyRevision: (args: { proposalId: string }) => invoke('quiz:applyRevision', args),
     discardRevision: () => invoke('quiz:discardRevision'),

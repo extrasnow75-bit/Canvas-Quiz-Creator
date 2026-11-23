@@ -79,6 +79,22 @@ THE ORIGINAL, one numbered line each:
 ${text}`
 }
 
+/** Headings as "# Title" (one # per level), so they survive a round trip through Gemini. */
+export function markHeadings(lines: DocLine[]): string[] {
+  return lines.map((l) => (l.heading && (l.headingLevel ?? 0) >= 1 ? `${'#'.repeat(l.headingLevel!)} ${l.text}` : l.text))
+}
+
+/** Gemini's lines back into Doc lines, "# Title" becoming a heading again. */
+export function unmarkHeadings(lines: string[]): DocLine[] {
+  return lines.map((raw) => {
+    const text = typeof raw === 'string' ? raw.replace(/[\r\n\v]+/g, ' ').trimEnd() : ''
+    const m = text.match(/^(#{1,6})\s+(.*)$/)
+    return m
+      ? { text: m[2], bold: false, bullet: false, heading: true, headingLevel: m[1].length }
+      : { text, bold: false, bullet: false, heading: false }
+  })
+}
+
 export function revisionPrompt(current: string[], instruction: string): string {
   return `You are revising quiz questions that are already in a fixed template.
 ${TEMPLATE_RULES}
@@ -91,6 +107,7 @@ RULES YOU MUST FOLLOW:
 - Do not change which answers are marked correct, or any point value, unless the change asked for
   says to.
 - Keep any text before the first question unchanged.
+- Lines starting with # are quiz titles (headings). Keep every one, exactly as written, in its place.
 
 Return JSON: {"lines": [every line of the revised questions, in order, "" for a blank line], "notes": "one sentence on what you changed"}.
 
@@ -198,19 +215,29 @@ export type RevisionCheck =
 /** Check a requested revision and work out, independently, what it changes. */
 export function checkRevision(current: DocLine[], aiLines: string[], notes: string): RevisionCheck {
   const before = parseQuiz(current)
-  const lines = aiLines.map((l) => (typeof l === 'string' ? l.replace(/[\r\n\v]+/g, ' ').trimEnd() : ''))
+  const lines = unmarkHeadings(aiLines)
   const parsed = parseQuiz(lines)
   const errorsOf = (p: ParseResult) => p.issues.filter((i) => i.severity === 'error').length
   if (parsed.questions.length === 0) return { ok: false, reason: 'Gemini did not return any questions the app could read.' }
   if (errorsOf(parsed) > errorsOf(before)) {
     return { ok: false, reason: 'Gemini’s revision left the questions with more formatting problems than before, so it was not used.' }
   }
+  // Quiz titles are how the Doc is split into quizzes: a revision may not lose or rename one.
+  const titles = (ls: DocLine[]) => ls.filter((l) => l.heading && (l.headingLevel ?? 0) >= 1).map((l) => `${l.headingLevel}:${l.text.trim()}`)
+  if (titles(current).join('|') !== titles(lines).join('|')) {
+    return { ok: false, reason: 'Gemini’s revision changed or dropped a quiz title, so it was not used.' }
+  }
   const changes = diffQuizzes(before.questions, parsed.questions)
   if (changes.length === 0) return { ok: false, reason: 'Gemini’s revision did not change any question.' }
   const currentTexts = new Set(current.map((l) => l.text.trim()))
   return {
     ok: true,
-    lines: lines.map((text) => ({ text, changed: text.trim() !== '' && !currentTexts.has(text.trim()), heading: false })),
+    lines: lines.map((l) => ({
+      text: l.text,
+      changed: !l.heading && l.text.trim() !== '' && !currentTexts.has(l.text.trim()),
+      heading: l.heading,
+      headingLevel: l.headingLevel,
+    })),
     parsed,
     changes,
     notes: typeof notes === 'string' ? notes.slice(0, 300) : '',

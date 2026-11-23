@@ -99,3 +99,19 @@ describe('diffQuizzes', () => {
     expect(changes.some((c) => /Question 2 is new/.test(c.message))).toBe(true)
   })
 })
+
+describe('revisions keep quiz titles', () => {
+  const h = (level: number, text: string): DocLine => ({ text, bold: false, bullet: false, heading: true, headingLevel: level })
+  const current = [h(1, 'Quiz 1'), line('Points: 1'), line('1) Q'), line('*a) x'), line('b) y'), h(1, 'Quiz 2'), line('Points: 1'), line('1) R'), line('*a) p'), line('b) q')]
+
+  it('accepts a revision that keeps the headings, and writes them back as headings', () => {
+    const check = checkRevision(current, ['# Quiz 1', 'Points: 2', '1) Q', '*a) x', 'b) y', '# Quiz 2', 'Points: 1', '1) R', '*a) p', 'b) q'], '')
+    expect(check.ok).toBe(true)
+    if (check.ok) expect(check.lines.filter((l) => l.heading).map((l) => [l.text, l.headingLevel])).toEqual([['Quiz 1', 1], ['Quiz 2', 1]])
+  })
+
+  it('refuses a revision that drops a quiz title', () => {
+    const check = checkRevision(current, ['# Quiz 1', 'Points: 2', '1) Q', '*a) x', 'b) y', 'Points: 1', '2) R', '*a) p', 'b) q'], '')
+    expect(check).toMatchObject({ ok: false })
+  })
+})

@@ -45,18 +45,29 @@ export interface DriveFile {
   isFolder: boolean
 }
 
+export interface DocQuiz {
+  index: number
+  /** The heading above the quiz, or null for a Doc that is one quiz with no heading. */
+  title: string | null
+  lines: DocLine[]
+  result: ParseResult
+  /** A trial run of the automatic fixes, nothing written: what step 3 can promise. */
+  fixPreview: FixPreview
+}
+
 export type ReadDocResult =
   | {
       ok: true
       title: string
       tabs: TabInfo[]
       tabId: string | null
-      lines: DocLine[]
-      result: ParseResult
+      /** The heading level quizzes were split at, or null for a one-quiz Doc. */
+      level: number | null
+      /** Heading levels with questions under them, to offer as a choice. */
+      levels: number[]
+      quizzes: DocQuiz[]
       /** When someone last edited the Doc by hand after the app wrote to it, if they have. */
       manualEditAt: string | null
-      /** A trial run of the automatic fixes, nothing written: what step 3 can promise. */
-      fixPreview: FixPreview
     }
   | { ok: false; message: string }
 
@@ -85,6 +96,7 @@ interface ReformatSummary {
   /** What the reformatter could not fix, already phrased for a person. */
   problems: string[]
   questionCount: number
+  quizCount: number
   /** Whether Gemini was asked, and what came of it. Null when it was not needed or no key is saved. */
   ai: { used: boolean; note: string } | null
 }
@@ -141,6 +153,11 @@ declare global {
           questions: Question[]
           jobId?: string
         }): Promise<CreateQuizResult>
+        createQuizzes(args: {
+          courseIds: string[]
+          quizzes: Array<{ key: string; title: string; description?: string; engine: QuizEngine; questions: Question[] }>
+          jobId?: string
+        }): Promise<CreateQuizResult>
         stopAfterCourse(jobId: string): Promise<void>
         onProgress(callback: (p: ProgressEvent) => void): () => void
       }
@@ -167,8 +184,8 @@ declare global {
         ): Promise<{ ok: true; fileId: string; name: string; mimeType: string } | { ok: false; message: string }>
       }
       quiz: {
-        readDoc(args: { fileId: string; tabId?: string; refresh?: boolean }): Promise<ReadDocResult>
-        reformat(args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string }): Promise<ReformatResult>
+        readDoc(args: { fileId: string; tabId?: string; refresh?: boolean; level?: number | null }): Promise<ReadDocResult>
+        reformat(args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string; level?: number | null }): Promise<ReformatResult>
         proposeRevision(args: { fileId: string; tabId: string; instruction: string }): Promise<ProposeRevisionResult>
         applyRevision(args: { proposalId: string }): Promise<{ ok: true; stamp: string; url: string } | { ok: false; message: string }>
         discardRevision(): Promise<void>

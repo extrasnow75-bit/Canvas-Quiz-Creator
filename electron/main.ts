@@ -5,7 +5,7 @@ import { isAllowedExternalUrl, setAllowedCanvasHost } from './ipc/externalLinks'
 import { readSettings, updateSettings } from './ipc/settings'
 import { setCanvasToken, canvasTokenStatus, setGeminiApiKey, geminiKeyStatus, getGeminiApiKey, type CredentialStatus } from './ipc/credentials'
 import { askForLines, validateGeminiKey } from './ipc/gemini'
-import { checkFallback, checkRevision, fallbackPrompt, revisionPrompt } from './ipc/aiReformat'
+import { checkFallback, checkRevision, fallbackPrompt, markHeadings, revisionPrompt } from './ipc/aiReformat'
 import { createQuizInCourses, listCourses, savedOrigin, verifyToken } from './ipc/canvas'
 import { normalizeSite } from './ipc/courseList'
 import { signIn, cancelSignIn, getStatus, clearTokens, verifySignIn } from './ipc/googleAuth'
@@ -21,12 +21,12 @@ import {
   describeDriveFile,
   type ListFilesArgs,
 } from './ipc/googleDrive'
-import { reformatQuiz } from './ipc/reformat'
+import { reformatDocument, problemsOf, type DocumentFix } from './ipc/docReformat'
 import { addTabRequest, clearTabRequest, fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle } from './ipc/docsWrite'
 import type { FixedLine, ReformatResult as RuleResult } from './ipc/reformat'
 import { docToLines, listTabs, type DocsDocument } from './ipc/docLines'
 import { parseQuiz } from './ipc/quizFormat'
-import type { DocLine, Question, QuizEngine } from './ipc/quizModel'
+import type { DocLine, ProgressEvent, Question, QuizEngine } from './ipc/quizModel'
 import type { QuizSettings } from './ipc/quizPayloads'
 import { checkForUpdate, checkNow, RELEASES_PAGE } from './ipc/updateCheck'
 import {
@@ -259,6 +259,66 @@ ipcMain.handle(
   },
 )
 
+/**
+ * Create several quizzes from one Doc, each as its own quiz type, all in the same courses. Quizzes
+ * go one at a time, and within each quiz one course at a time. "Stop after this course" finishes
+ * the course in progress, then skips everything left, in every quiz.
+ */
+ipcMain.handle(
+  'canvas:createQuizzes',
+  async (
+    e,
+    args: {
+      courseIds: string[]
+      quizzes: Array<{ key: string; title: string; description?: string; engine: QuizEngine; questions: Question[] }>
+      jobId?: string
+    },
+  ) => {
+    if (!Array.isArray(args?.courseIds) || args.courseIds.length === 0) return { ok: false as const, message: 'Choose at least one course.' }
+    if (!Array.isArray(args?.quizzes) || args.quizzes.length === 0) return { ok: false as const, message: 'Choose at least one quiz to build.' }
+    if (args.quizzes.some((q) => q.engine !== 'classic' && q.engine !== 'new')) {
+      return { ok: false as const, message: 'Each quiz needs Classic Quizzes or New Quizzes.' }
+    }
+    if (args.jobId) stopRequested.delete(args.jobId)
+    const send = (p: ProgressEvent) => {
+      if (!e.sender.isDestroyed()) e.sender.send('quiz:progress', p)
+    }
+    const shouldStop = () => !!args.jobId && stopRequested.has(args.jobId)
+    const results: ProgressEvent[] = []
+
+    return withJob(args.jobId, async (signal) => {
+      for (const quiz of args.quizzes) {
+        if (shouldStop() || signal?.aborted) {
+          for (const courseId of args.courseIds) {
+            const p = { quizKey: quiz.key, courseId: String(courseId), status: { state: 'skipped' } as const }
+            results.push(p)
+            send(p)
+          }
+          continue
+        }
+        const res = await createQuizInCourses({
+          courseIds: args.courseIds.map(String),
+          engine: quiz.engine,
+          settings: { title: String(quiz.title ?? ''), description: String(quiz.description ?? '') },
+          questions: quiz.questions,
+          signal,
+          shouldStop,
+          newId: randomUUID,
+          onProgress: (p) => send({ ...p, quizKey: quiz.key }),
+        })
+        if (!res.ok) {
+          for (const courseId of args.courseIds) {
+            const p = { quizKey: quiz.key, courseId: String(courseId), status: { state: 'failed' as const, message: res.message, added: 0 } }
+            results.push(p)
+            send(p)
+          }
+        } else results.push(...res.results.map((r) => ({ ...r, quizKey: quiz.key })))
+      }
+      return { ok: true as const, results }
+    })
+  },
+)
+
 /** Runs asked to stop once the course in progress is finished. */
 const stopRequested = new Set<string>()
 ipcMain.handle('canvas:stopAfterCourse', (_e, jobId: string) => {
@@ -301,7 +361,7 @@ const appWrites = new Map<string, string>()
  * Read a Google Doc's questions: the document's tabs, and the questions in one of them (the
  * first, or `tabId`). `refresh` fetches it again, after someone has edited it.
  */
-ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string; refresh?: boolean }) => {
+ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string; refresh?: boolean; level?: number | null }) => {
   try {
     if (!lastDoc || lastDoc.fileId !== args.fileId || args.refresh) {
       lastDoc = { fileId: args.fileId, doc: (await getGoogleDocStructure(args.fileId)) as DocsDocument }
@@ -318,8 +378,24 @@ ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string
       appWrites.set(args.fileId, doc.revisionId) // tell the person once per edit, not on every read
     }
 
-    const result = parseQuiz(lines)
-    return { ok: true as const, title: doc.title ?? '', tabs, tabId: tabId ?? null, lines, result, manualEditAt, fixPreview: previewFixes(lines, result) }
+    // The Doc's quizzes, each with its questions as they are now and what the automatic fixes would do.
+    const content = lines.filter((l) => !isAppHeaderLine(l.text, l.heading))
+    const trial = reformatDocument(content, args.level)
+    const several = trial.quizzes.length > 1
+    const quizzes = trial.quizzes.map((q, i) => {
+      const result = parseQuiz(q.source)
+      return { index: i, title: q.title, lines: q.source, result, fixPreview: previewFixes(q.title, result, q.result, several) }
+    })
+    return {
+      ok: true as const,
+      title: doc.title ?? '',
+      tabs,
+      tabId: tabId ?? null,
+      level: trial.split.level,
+      levels: trial.split.levels,
+      quizzes,
+      manualEditAt,
+    }
   } catch (e) {
     return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
   }
@@ -330,23 +406,15 @@ ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string
  * many of the problems they would clear, how many would still need a person, and what they would
  * change. Shown in step 3 so the developer knows before choosing "Fix automatically".
  */
-function previewFixes(lines: DocLine[], current: ReturnType<typeof parseQuiz>) {
+function previewFixes(title: string | null, current: ReturnType<typeof parseQuiz>, trial: DocumentFix['quizzes'][number]['result'], several: boolean) {
   const errorsNow = current.issues.filter((i) => i.severity === 'error').length
-  const source = lines.filter((l) => !isAppHeaderLine(l.text, l.heading))
-  const trial = reformatQuiz(source)
   const errorsAfter = trial.parsed.issues.filter((i) => i.severity === 'error').length
-  const needsPerson = trial.parsed.issues
-    .filter((i) => i.severity === 'error')
-    .map((i) => {
-      const q = i.question !== null ? trial.parsed.questions[i.question] : null
-      return `${q ? `Question ${q.number ?? i.question! + 1}: ` : ''}${i.message}`
-    })
   return {
     problems: errorsNow,
     autoFixable: Math.max(0, errorsNow - errorsAfter),
     needsPerson: errorsNow === 0 ? 0 : errorsAfter,
     wouldChange: trial.changes.map((c) => c.message),
-    needsPersonMessages: errorsNow === 0 ? [] : needsPerson,
+    needsPersonMessages: errorsNow === 0 ? [] : problemsOf(title, trial.parsed, several),
     anyChange: trial.lines.some((l) => l.changed),
   }
 }
@@ -361,45 +429,52 @@ const SCOPE_PROBLEM = /does not have permission to edit Google Docs/
  * When the person cannot edit the Doc (shared view-only), or Google will not add a tab, the
  * questions go into a new Doc in their My Drive instead, and the result says so and why.
  */
-ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string }) => {
+ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string; level?: number | null }) => {
   try {
     const doc = (await getGoogleDocStructure(args.fileId)) as DocsDocument
     const tabs = listTabs(doc)
     const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : tabs[0]?.id
-    const source = docToLines(doc, tabId).filter((l) => !isAppHeaderLine(l.text, l.heading))
-    let r: RuleResult = reformatQuiz(source)
+    const content = docToLines(doc, tabId).filter((l) => !isAppHeaderLine(l.text, l.heading))
+    let fix: DocumentFix = reformatDocument(content, args.level)
 
-    // Problems the rules could not fix go to Gemini, when a key is saved. Its answer only replaces
-    // the rules' answer if it passes every check in aiReformat.ts.
+    // Gemini is a last resort: only when asked for, and only for quizzes the rules left with
+    // problems. Its answer for a quiz is used only if it passes every check in aiReformat.ts.
     let ai: { used: boolean; note: string } | null = null
-    const ruleErrors = r.parsed.issues.filter((i) => i.severity === 'error').length
-    // Gemini is a last resort: only when asked for, and only when the rules left problems.
-    if (args.useAi && ruleErrors > 0 && !getGeminiApiKey()) {
-      ai = { used: false, note: 'No Gemini API key is saved, so only the app’s own fixes were used.' }
-    }
-    if (args.useAi && ruleErrors > 0 && getGeminiApiKey()) {
-      try {
-        const answer = await askForLines(fallbackPrompt(source))
-        const checked = checkFallback(source, r, answer.lines)
-        if (checked.ok) {
-          r = checked.result
-          ai = { used: true, note: 'Gemini laid out what the app’s rules could not. Its work passed the app’s checks: no new wording, and correct answers only where the faculty member marked them.' }
-        } else {
-          ai = { used: false, note: checked.reason }
+    const errorsIn = (q: DocumentFix['quizzes'][number]) => q.result.parsed.issues.filter((i) => i.severity === 'error').length
+    const stuck = fix.quizzes.map((q, i) => [q, i] as const).filter(([q]) => errorsIn(q) > 0)
+    if (args.useAi && stuck.length > 0) {
+      if (!getGeminiApiKey()) {
+        ai = { used: false, note: 'No Gemini API key is saved, so only the app’s own fixes were used.' }
+      } else {
+        const overrides = new Map<number, RuleResult>()
+        const refused: string[] = []
+        for (const [q, i] of stuck) {
+          try {
+            const answer = await askForLines(fallbackPrompt(q.source))
+            const checked = checkFallback(q.source, q.result, answer.lines)
+            if (checked.ok) overrides.set(i, checked.result)
+            else refused.push(`${q.title ?? 'The quiz'}: ${checked.reason}`)
+          } catch (e) {
+            refused.push(`${q.title ?? 'The quiz'}: Gemini was not used (${e instanceof Error ? e.message : String(e)})`)
+          }
         }
-      } catch (e) {
-        ai = { used: false, note: `Gemini was not used: ${e instanceof Error ? e.message : String(e)}` }
+        if (overrides.size > 0) fix = reformatDocument(content, args.level, overrides)
+        ai = {
+          used: overrides.size > 0,
+          note:
+            (overrides.size > 0
+              ? `Gemini laid out ${overrides.size} quiz${overrides.size === 1 ? '' : 'zes'} the app’s rules could not, and passed the app’s checks: no new wording, and correct answers only where the faculty member marked them.`
+              : 'Gemini’s work was not used.') + (refused.length ? ` ${refused.join(' ')}` : ''),
+        }
       }
     }
 
-    const problems = r.parsed.issues
-      .filter((i) => i.severity === 'error')
-      .map((i) => {
-        const q = i.question !== null ? r.parsed.questions[i.question] : null
-        return `${q ? `Question ${q.number ?? i.question! + 1}: ` : ''}${i.message}`
-      })
-    const check = r.changes.filter((c) => c.kind !== 'format').map((c) => c.message)
-    const summary = { changes: r.changes, problems, questionCount: r.parsed.questions.length, ai }
+    const several = fix.quizzes.length > 1
+    const problems = fix.quizzes.flatMap((q) => problemsOf(q.title, q.result.parsed, several))
+    const check = fix.changes.filter((c) => c.kind !== 'format').map((c) => c.message)
+    const questionCount = fix.quizzes.reduce((n, q) => n + q.result.parsed.questions.length, 0)
+    const summary = { changes: fix.changes, problems, questionCount, quizCount: fix.quizzes.length, ai }
+    const r = { lines: fix.lines }
 
     if (!r.lines.some((l) => l.changed) && !args.replaceTabId) return { ok: true as const, nothingChanged: true as const, ...summary }
 
@@ -478,7 +553,7 @@ ipcMain.handle('quiz:proposeRevision', async (_e, args: { fileId: string; tabId:
     if (!args.instruction?.trim()) return { ok: false as const, message: 'Say what you would like changed.' }
     const doc = (await getGoogleDocStructure(args.fileId)) as DocsDocument
     const current = docToLines(doc, args.tabId).filter((l) => !isAppHeaderLine(l.text, l.heading))
-    const answer = await askForLines(revisionPrompt(current.map((l) => l.text), args.instruction))
+    const answer = await askForLines(revisionPrompt(markHeadings(current), args.instruction))
     const checked = checkRevision(current, answer.lines, answer.notes)
     if (!checked.ok) return { ok: false as const, message: checked.reason }
     const problems = checked.parsed.issues

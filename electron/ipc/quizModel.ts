@@ -123,6 +123,8 @@ export type CourseRunStatus =
   | { state: 'skipped' }
 
 export interface ProgressEvent {
+  /** Which quiz, when several are created in one run. */
+  quizKey?: string
   courseId: string
   status: CourseRunStatus
 }
