@@ -49,6 +49,8 @@ export interface DocsTab {
 }
 export interface DocsDocument {
   title?: string
+  /** Changes with every edit, by anyone: how the app tells its own last write from a later one. */
+  revisionId?: string
   tabs?: DocsTab[]
   /** Present when the document is fetched without includeTabsContent. */
   body?: { content?: StructuralElement[] }

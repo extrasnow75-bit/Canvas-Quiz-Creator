@@ -72,5 +72,6 @@ contextBridge.exposeInMainWorld('api', {
   },
   quiz: {
     readDoc: (args: { fileId: string; tabId?: string; refresh?: boolean }) => invoke('quiz:readDoc', args),
+    reformat: (args: { fileId: string; tabId?: string }) => invoke('quiz:reformat', args),
   },
 })

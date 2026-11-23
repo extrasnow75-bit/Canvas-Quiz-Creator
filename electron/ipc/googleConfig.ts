@@ -62,6 +62,9 @@ export function isGoogleSecretConfigured(): boolean {
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/drive.readonly',
+  // Adding a "Reformatted questions" tab to the faculty member's Doc. A sensitive scope, not a
+  // restricted one: it adds no review burden beyond what drive.readonly already brings.
+  'https://www.googleapis.com/auth/documents',
   'openid',
   'email',
   'profile',

@@ -345,6 +345,75 @@ export async function getGoogleDocStructure(rawFileId: string): Promise<unknown>
   return response.json()
 }
 
+/** Whether the signed-in person can edit the file (so the app can add a tab to it). */
+export async function canEditFile(rawFileId: string): Promise<boolean> {
+  const fileId = assertFileId(rawFileId)
+  const params = new URLSearchParams({ fields: 'capabilities/canEdit', supportsAllDrives: 'true' })
+  const response = await authorized(`${DRIVE_FILES}/${fileId}?${params.toString()}`)
+  if (!response.ok) throw await driveError(response, 'file')
+  const body = (await response.json()) as { capabilities?: { canEdit?: boolean } }
+  return body.capabilities?.canEdit === true
+}
+
+const DOCS_API = 'https://docs.googleapis.com/v1/documents'
+
+const MSG_DOCS_SCOPE =
+  'The app does not have permission to edit Google Docs yet. Open Initial setup, sign out of Google, ' +
+  'and sign in again, allowing the app to edit your Google Docs.'
+
+async function docsError(response: Response): Promise<Error> {
+  const detail = await parseGoogleError(response)
+  if (response.status === 403 && /insufficient|scope/i.test(detail)) return new Error(MSG_DOCS_SCOPE)
+  if (/has not been used|is disabled|SERVICE_DISABLED/i.test(detail)) {
+    return new Error('The Google Docs API is not turned on for this app yet. Whoever set up the app needs to enable it in the Google Cloud Console.')
+  }
+  console.warn(`Google Docs request failed (${response.status})${detail ? `: ${detail}` : ''}`)
+  return new Error(`Google Docs could not make that change${detail ? `: ${detail}` : '.'}`)
+}
+
+/**
+ * Apply edits to a Google Doc. Returns Google's replies (one per request) and the revision the
+ * document is at afterwards, which is how a later read tells the app's own edit from a person's.
+ */
+export async function docsBatchUpdate(
+  rawFileId: string,
+  requests: object[],
+): Promise<{ replies: Array<Record<string, any>>; revisionId: string | null }> {
+  const fileId = assertFileId(rawFileId)
+  const accessToken = await getAccessToken()
+  const response = await fetchWithRetry(
+    `${DOCS_API}/${fileId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requests }),
+    },
+    // Not repeatable: a retried insert would write the questions twice.
+    { idempotent: false, timeoutMs: 90_000 },
+  )
+  if (!response.ok) throw await docsError(response)
+  const body = (await response.json()) as { replies?: Array<Record<string, any>>; writeControl?: { requiredRevisionId?: string } }
+  return { replies: body.replies ?? [], revisionId: body.writeControl?.requiredRevisionId ?? null }
+}
+
+/** A new, empty Google Doc in the person's My Drive. */
+export async function createGoogleDoc(title: string): Promise<{ fileId: string }> {
+  const accessToken = await getAccessToken()
+  const response = await fetchWithRetry(
+    DOCS_API,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    },
+    { idempotent: false },
+  )
+  if (!response.ok) throw await docsError(response)
+  const body = (await response.json()) as { documentId?: string }
+  if (!body.documentId) throw new Error('Google created the document but did not say where it is.')
+  return { fileId: body.documentId }
+}
+
 /** A Google Sheet as CSV. */
 export async function getGoogleSheetCsv(rawFileId: string): Promise<string> {
   const fileId = assertFileId(rawFileId)

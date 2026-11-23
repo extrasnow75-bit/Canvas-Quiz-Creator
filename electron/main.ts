@@ -13,8 +13,14 @@ import {
   getFileMetadata,
   getGoogleDocStructure,
   extractFileIdFromUrl,
+  canEditFile,
+  docsBatchUpdate,
+  createGoogleDoc,
+  describeDriveFile,
   type ListFilesArgs,
 } from './ipc/googleDrive'
+import { reformatQuiz } from './ipc/reformat'
+import { addTabRequest, fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle } from './ipc/docsWrite'
 import { docToLines, listTabs, type DocsDocument } from './ipc/docLines'
 import { parseQuiz } from './ipc/quizFormat'
 import type { Question, QuizEngine } from './ipc/quizModel'
@@ -270,8 +276,14 @@ ipcMain.handle('drive:resolveUrl', async (_e, url: string) => {
 let lastDoc: { fileId: string; doc: DocsDocument } | null = null
 
 /**
+ * The revision each document was at right after this app last wrote to it. A later read that finds
+ * a different revision means a person has edited it since: the "Manual edit detected" notice.
+ */
+const appWrites = new Map<string, string>()
+
+/**
  * Read a Google Doc's questions: the document's tabs, and the questions in one of them (the
- * first, or `tabId`). `refresh` fetches it again, after the developer has fixed something.
+ * first, or `tabId`). `refresh` fetches it again, after someone has edited it.
  */
 ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string; refresh?: boolean }) => {
   try {
@@ -282,7 +294,84 @@ ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string
     const tabs = listTabs(doc)
     const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : tabs[0]?.id
     const lines = docToLines(doc, tabId)
-    return { ok: true as const, title: doc.title ?? '', tabs, tabId: tabId ?? null, lines, result: parseQuiz(lines) }
+
+    let manualEditAt: string | null = null
+    const written = appWrites.get(args.fileId)
+    if (written && doc.revisionId && doc.revisionId !== written) {
+      manualEditAt = (await describeDriveFile(args.fileId).catch(() => null))?.modifiedTime ?? new Date().toISOString()
+      appWrites.set(args.fileId, doc.revisionId) // tell the person once per edit, not on every read
+    }
+
+    return { ok: true as const, title: doc.title ?? '', tabs, tabId: tabId ?? null, lines, result: parseQuiz(lines), manualEditAt }
+  } catch (e) {
+    return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
+  }
+})
+
+const SCOPE_PROBLEM = /does not have permission to edit Google Docs/
+
+/**
+ * Reformat the questions in one tab and write them to a new "Reformatted questions" tab of the
+ * same Doc, with a time stamp at the top and every changed line highlighted. The original tab is
+ * not touched.
+ *
+ * When the person cannot edit the Doc (shared view-only), or Google will not add a tab, the
+ * questions go into a new Doc in their My Drive instead, and the result says so and why.
+ */
+ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: string }) => {
+  try {
+    const doc = (await getGoogleDocStructure(args.fileId)) as DocsDocument
+    const tabs = listTabs(doc)
+    const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : tabs[0]?.id
+    const source = docToLines(doc, tabId).filter((l) => !isAppHeaderLine(l.text, l.heading))
+    const r = reformatQuiz(source)
+
+    const problems = r.parsed.issues
+      .filter((i) => i.severity === 'error')
+      .map((i) => {
+        const q = i.question !== null ? r.parsed.questions[i.question] : null
+        return `${q ? `Question ${q.number ?? i.question! + 1}: ` : ''}${i.message}`
+      })
+    const check = r.changes.filter((c) => c.kind !== 'format').map((c) => c.message)
+    const summary = { changes: r.changes, problems, questionCount: r.parsed.questions.length }
+
+    if (!r.lines.some((l) => l.changed)) return { ok: true as const, nothingChanged: true as const, ...summary }
+
+    const when = new Date()
+    const notes = { check, needsPerson: problems }
+    const docTitle = doc.title ?? 'Quiz questions'
+    let target: { fileId: string; name: string; tabId: string | null; tabTitle: string; inNewDoc: boolean; why?: string } | null = null
+    let revisionId: string | null = null
+
+    let why: string | undefined
+    if (await canEditFile(args.fileId)) {
+      try {
+        const title = uniqueTabTitle(tabs.map((t) => t.title))
+        const added = await docsBatchUpdate(args.fileId, [addTabRequest(title)])
+        const newTabId: string | undefined = added.replies[0]?.addDocumentTab?.tabProperties?.tabId
+        if (!newTabId) throw new Error('Google added the tab but did not say which it was.')
+        revisionId = (await docsBatchUpdate(args.fileId, fillTabRequests(newTabId, r.lines, notes, when))).revisionId
+        target = { fileId: args.fileId, name: docTitle, tabId: newTabId, tabTitle: title, inNewDoc: false }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e)
+        if (SCOPE_PROBLEM.test(message)) throw e
+        why = `Google would not add a tab to the Doc (${message}), so the questions are in a new Doc instead.`
+      }
+    } else {
+      why = 'You can only view the original Doc, not edit it, so the questions are in a new Doc in your My Drive instead.'
+    }
+
+    if (!target) {
+      const name = `${docTitle} – Reformatted questions`
+      const created = await createGoogleDoc(name)
+      revisionId = (await docsBatchUpdate(created.fileId, fillTabRequests(undefined, r.lines, notes, when))).revisionId
+      const fresh = (await getGoogleDocStructure(created.fileId)) as DocsDocument
+      target = { fileId: created.fileId, name, tabId: listTabs(fresh)[0]?.id ?? null, tabTitle: name, inNewDoc: true, why }
+    }
+
+    if (revisionId) appWrites.set(target.fileId, revisionId)
+    lastDoc = null
+    return { ok: true as const, nothingChanged: false as const, ...summary, target: { ...target, url: tabUrl(target.fileId, target.tabId) }, stamp: stampFor(when) }
   } catch (e) {
     return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
   }
