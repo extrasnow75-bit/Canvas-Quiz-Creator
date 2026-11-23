@@ -61,14 +61,21 @@ const TYPE_LINE = /^(?:question\s+)?type\s*:\s*(.+)$/i
 const QUESTION_LINE = /^(?:(?:question|q)\s*#?\s*(\d{1,4})\s*[:.)-]?|(\d{1,4})\s*[.):]|(\d{1,4})\s+-|(#)\s*\))\s*(.*)$/i
 /** A choice: "*b) x", "(b) x", "B. x", "b - x", "* b) x", "b) *x". */
 const CHOICE_LINE = /^(\*?)\s*\(?([a-hA-H])\s*[).:]\s*(.*)$|^(\*?)\s*([a-hA-H])\s+-\s+(.*)$/
-const ANSWER_NOTE = /^(?:the\s+)?(?:correct\s+)?(?:answer|ans|key|correct)\s*(?:is)?\s*[:=-]?\s*(.+)$/i
+/**
+ * "Answer: B", "Correct answer: A, C", "Key: c", "Correct: True", "The answer is B. Paris". A
+ * separator (":" "=" "-" or "is") is required, and what follows must be letters or True/False, so a
+ * question that merely starts with "Correct" or "Answer" is never taken for a key.
+ */
+const ANSWER_NOTE = /^(?:the\s+)?(?:(?:correct\s+)?answers?|ans\.?|key|correct)\s*(?:is\s+|[:=-]\s*)(.+)$/i
+const KEY_VALUE = /^(?:\(?[a-h]\)?(?:\s*(?:,|&|and)\s*\(?[a-h]\)?)*|true|false|t|f)(?:[.)]?(?:\s+.*)?)?$/i
 const KEY_HEADING = /^(?:answer\s*key|answers|key|correct\s+answers)\s*:?\s*$/i
 const KEY_ENTRY = /^(\d{1,4})\s*[.):-]?\s*((?:[a-h](?:\s*(?:,|&|and)\s*[a-h])*)|true|false|t|f)\s*\.?$/i
 const KEY_INLINE = /(\d{1,4})\s*[.):-]\s*([a-h]|true|false|t|f)\b/gi
 const POINTS_SUFFIX = /\s*[([]?\s*(\d+(?:\.\d+)?)\s*(?:pts?\.?|points?)\s*[)\]]?\s*$/i
 const CORRECT_SUFFIX = /\s*(?:\*|\((?:correct|answer|right)\)|\[(?:correct|answer|right)\]|[-–]\s*correct|✓|✔)\s*$/i
 // Text copied out of Canvas. The student and results views print these around each question.
-const CANVAS_NOISE = /^(?:flag\s+question\b.*|group\s+of\s+answer\s+choices|unanswered(?:\s+question)?|you\s+answered|correct!?|incorrect!?|partial|question\s+\d{1,4}\s+of\s+\d{1,4})$/i
+// Not "Correct" or "Incorrect" on their own: those are also real answer choices.
+const CANVAS_NOISE = /^(?:flag\s+question\b.*|group\s+of\s+answer\s+choices|unanswered(?:\s+question)?|you\s+answered|correct!|question\s+\d{1,4}\s+of\s+\d{1,4})$/i
 /** Canvas's results view puts "Correct Answer" on the line above the correct choice. */
 const CANVAS_CORRECT_LABEL = /^correct\s+answers?$/i
 /** "2 pts" on a line of its own, as Canvas prints it under the question header. */
@@ -94,7 +101,7 @@ function clean(text: string): string {
 
 /** Letters in a key entry: "B", "a, c", "A and C". */
 function keyLetters(raw: string): string[] {
-  const t = raw.trim().toLowerCase().replace(/\.$/, '')
+  const t = raw.trim().toLowerCase().replace(/[()]/g, ' ').replace(/\.$/, '')
   if (/^(true|t)$/.test(t)) return ['true']
   if (/^(false|f)$/.test(t)) return ['false']
   const letters = t.split(/\s*(?:,|&|and|\s)\s*/).filter((x) => /^[a-h]$/.test(x))
@@ -301,7 +308,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
       continue
     }
     const note = current.choices.length > 0 || current.body.length === 0 ? l.text.match(ANSWER_NOTE) : null
-    if (note) {
+    if (note && KEY_VALUE.test(note[1].trim())) {
       const letters = keyLetters(note[1])
       if (letters.length > 0) {
         current.key = letters
@@ -397,6 +404,12 @@ export function addDefaultPoints(lines: FixedLine[], points: number): { lines: F
     }
     if (/^points?\s*[:=]/i.test(t)) {
       pointsSeen = true
+      out.push(l)
+      continue
+    }
+    // A text-only item has no numbered line: its Points line (if any) is its own, not the next question's.
+    if (/^text\s+to\s+display\s*:/i.test(t)) {
+      pointsSeen = false
       out.push(l)
       continue
     }

@@ -10,6 +10,7 @@ import { createQuizInCourses, listCourses, savedOrigin, verifyToken } from './ip
 import { normalizeSite } from './ipc/courseList'
 import { signIn, cancelSignIn, getStatus, clearTokens, verifySignIn } from './ipc/googleAuth'
 import { withJob, cancelJob } from './ipc/jobs'
+import { toUserMessage } from './ipc/userMessage'
 import {
   listFiles,
   getFileMetadata,
@@ -28,7 +29,7 @@ import type { FixedLine, ReformatResult as RuleResult } from './ipc/reformat'
 import { docToLines, listTabs, type DocsDocument } from './ipc/docLines'
 import { parseQuiz } from './ipc/quizFormat'
 import type { DocLine, ProgressEvent, Question, QuizEngine } from './ipc/quizModel'
-import type { QuizSettings } from './ipc/quizPayloads'
+import { canBuild, type QuizSettings } from './ipc/quizPayloads'
 import { checkForUpdate, checkNow, RELEASES_PAGE } from './ipc/updateCheck'
 import {
   applyZoomLevel,
@@ -216,107 +217,165 @@ ipcMain.handle('canvas:listCourses', async (e, args: { site: string }) => {
       return { ok: false as const, message: 'Cancelled. No courses were loaded.' }
     }
   }
-  if (origin !== current) {
+  // The saved site is where the token goes, so it changes only once that site has answered.
+  const result = await listCourses(origin)
+  if (result.ok && origin !== current) {
     updateSettings({ canvasSite: origin })
     setAllowedCanvasHost(origin)
   }
-  return listCourses(origin)
+  return result
 })
 
 ipcMain.handle('canvas:verifyToken', () => verifyToken())
 
+/** A course as the window shows it in the results: only the id is used to reach Canvas. */
+interface RunCourse {
+  id: string
+  name: string
+  [k: string]: unknown
+}
+
 /**
- * Create the quiz in each chosen course. Progress goes back on 'quiz:progress' as each question
- * lands, so the window can show it; `jobId` lets the window stop the run between requests.
+ * The run in progress (or the last one), kept here so a window that reloads mid-run can show it
+ * again, and so a second Launch cannot start while one is still going.
  */
-ipcMain.handle(
-  'canvas:createQuiz',
-  (
-    e,
-    args: { courseIds: string[]; engine: QuizEngine; settings: QuizSettings; questions: Question[]; jobId?: string },
-  ) => {
-    if (!Array.isArray(args?.courseIds) || args.courseIds.length === 0) {
-      return { ok: false as const, message: 'Choose at least one course.' }
-    }
-    if (args.engine !== 'classic' && args.engine !== 'new') {
-      return { ok: false as const, message: 'Choose Classic Quizzes or New Quizzes.' }
-    }
-    updateSettings({ lastEngine: args.engine })
-    if (args.jobId) stopRequested.delete(args.jobId)
-    return withJob(args.jobId, (signal) =>
-      createQuizInCourses({
-        courseIds: args.courseIds.map(String),
-        engine: args.engine,
-        settings: { title: String(args.settings?.title ?? ''), description: String(args.settings?.description ?? '') },
-        questions: args.questions,
-        signal,
-        shouldStop: () => !!args.jobId && stopRequested.has(args.jobId),
-        newId: randomUUID,
-        onProgress: (p) => {
-          if (!e.sender.isDestroyed()) e.sender.send('quiz:progress', p)
-        },
-      }),
-    )
-  },
-)
+let activeRun: {
+  jobId: string
+  quizzes: Array<{ key: string; title: string; engine: QuizEngine; count: number }>
+  courses: RunCourse[]
+  statuses: Record<string, ProgressEvent['status']>
+  done: boolean
+  error: string | null
+} | null = null
+
+ipcMain.handle('canvas:currentRun', () => activeRun)
+
+const MAX_COURSES = 100
+const MAX_QUIZZES = 50
 
 /**
  * Create several quizzes from one Doc, each as its own quiz type, all in the same courses. Quizzes
  * go one at a time, and within each quiz one course at a time. "Stop after this course" finishes
  * the course in progress, then skips everything left, in every quiz.
+ *
+ * The window says which quizzes (by their place in the Doc), their titles and quiz types. The
+ * questions themselves come from the Doc, read again here, never from the window; and if the Doc
+ * changed since the window last showed it, nothing is created.
  */
 ipcMain.handle(
   'canvas:createQuizzes',
   async (
     e,
     args: {
-      courseIds: string[]
-      quizzes: Array<{ key: string; title: string; description?: string; engine: QuizEngine; questions: Question[] }>
-      jobId?: string
+      fileId: string
+      tabId?: string | null
+      level?: number | null
+      picks: Array<{ index: number; title: string; engine: QuizEngine }>
+      courses: RunCourse[]
+      jobId: string
     },
   ) => {
-    if (!Array.isArray(args?.courseIds) || args.courseIds.length === 0) return { ok: false as const, message: 'Choose at least one course.' }
-    if (!Array.isArray(args?.quizzes) || args.quizzes.length === 0) return { ok: false as const, message: 'Choose at least one quiz to build.' }
-    if (args.quizzes.some((q) => q.engine !== 'classic' && q.engine !== 'new')) {
-      return { ok: false as const, message: 'Each quiz needs Classic Quizzes or New Quizzes.' }
+    if (activeRun && !activeRun.done) {
+      return { ok: false as const, message: 'Quizzes are already being created. Wait for that run to finish, then try again.' }
     }
-    if (args.jobId) stopRequested.delete(args.jobId)
+    const courses = (Array.isArray(args?.courses) ? args.courses : []).filter(
+      (c, i, all) => c && /^\d+$/.test(String(c.id)) && all.findIndex((x) => String(x?.id) === String(c.id)) === i,
+    )
+    if (courses.length === 0) return { ok: false as const, message: 'Choose at least one course in step 4.' }
+    if (courses.length > MAX_COURSES) return { ok: false as const, message: `Choose ${MAX_COURSES} courses or fewer at a time.` }
+    const picks = Array.isArray(args?.picks) ? args.picks : []
+    if (picks.length === 0) return { ok: false as const, message: 'Tick at least one quiz to build in step 2.' }
+    if (picks.length > MAX_QUIZZES) return { ok: false as const, message: `Build ${MAX_QUIZZES} quizzes or fewer at a time.` }
+    if (picks.some((q) => q.engine !== 'classic' && q.engine !== 'new' || !Number.isInteger(q.index))) {
+      return { ok: false as const, message: 'Each quiz needs Classic Quizzes or New Quizzes. Choose one in step 2.' }
+    }
+    if (typeof args.jobId !== 'string' || !args.jobId) return { ok: false as const, message: 'The run could not start. Please try again.' }
+
+    // Read the Doc again: the questions sent to Canvas are the ones in it now.
+    let read: Awaited<ReturnType<typeof readQuizzes>>
+    try {
+      read = await readQuizzes({ fileId: args.fileId, tabId: args.tabId ?? undefined, refresh: true, level: args.level })
+    } catch (err) {
+      return { ok: false as const, message: toUserMessage(err, 'The Google Doc could not be read again before launching.') }
+    }
+    if (read.fingerprint !== shownQuizzes.get(args.fileId)) {
+      return {
+        ok: false as const,
+        changed: true as const,
+        message: 'The Google Doc changed since you last read it, so nothing was sent to Canvas. Check the quizzes below, which are the Doc as it is now, then launch again.',
+      }
+    }
+    const list: Array<{ key: string; title: string; engine: QuizEngine; questions: Question[] }> = []
+    for (const p of picks) {
+      const q = read.quizzes[p.index]
+      if (!q) return { ok: false as const, changed: true as const, message: 'A quiz you chose is no longer in the Doc. Check the quizzes below, then launch again.' }
+      const title = String(p.title ?? '').trim().slice(0, 255)
+      if (!title) return { ok: false as const, message: 'Every quiz needs a title. Type one in step 2.' }
+      list.push({ key: String(p.index), title, engine: p.engine, questions: q.result.questions.filter((x) => canBuild(x, p.engine)) })
+    }
+    updateSettings({ lastEngine: list[list.length - 1].engine })
+
+    const courseIds = courses.map((c) => String(c.id))
+    const run = {
+      jobId: args.jobId,
+      quizzes: list.map((q) => ({ key: q.key, title: q.title, engine: q.engine, count: q.questions.length })),
+      courses: courses.map((c) => ({ ...c, id: String(c.id), name: String(c.name ?? '') })),
+      statuses: {} as Record<string, ProgressEvent['status']>,
+      done: false,
+      error: null as string | null,
+    }
+    activeRun = run
+    stopRequested.delete(args.jobId)
     const send = (p: ProgressEvent) => {
-      if (!e.sender.isDestroyed()) e.sender.send('quiz:progress', p)
+      run.statuses[`${p.quizKey ?? '0'}|${p.courseId}`] = p.status
+      if (!e.sender.isDestroyed()) e.sender.send('quiz:progress', { ...p, jobId: args.jobId })
     }
-    const shouldStop = () => !!args.jobId && stopRequested.has(args.jobId)
+    const shouldStop = () => stopRequested.has(args.jobId)
     const results: ProgressEvent[] = []
 
-    return withJob(args.jobId, async (signal) => {
-      for (const quiz of args.quizzes) {
-        if (shouldStop() || signal?.aborted) {
-          for (const courseId of args.courseIds) {
-            const p = { quizKey: quiz.key, courseId: String(courseId), status: { state: 'skipped' } as const }
-            results.push(p)
-            send(p)
+    try {
+      return await withJob(args.jobId, async (signal) => {
+        for (const quiz of list) {
+          if (shouldStop() || signal?.aborted) {
+            for (const courseId of courseIds) {
+              const p = { quizKey: quiz.key, courseId, status: { state: 'skipped' } as const }
+              results.push(p)
+              send(p)
+            }
+            continue
           }
-          continue
+          const res = await createQuizInCourses({
+            courseIds,
+            engine: quiz.engine,
+            settings: { title: quiz.title, description: '' },
+            questions: quiz.questions,
+            signal,
+            shouldStop,
+            newId: randomUUID,
+            onProgress: (p) => send({ ...p, quizKey: quiz.key }),
+          })
+          if (!res.ok) {
+            for (const courseId of courseIds) {
+              const p = { quizKey: quiz.key, courseId, status: { state: 'failed' as const, message: res.message, added: 0 } }
+              results.push(p)
+              send(p)
+            }
+          } else {
+            for (const r of res.results) {
+              const p = { ...r, quizKey: quiz.key }
+              results.push(p)
+              run.statuses[`${quiz.key}|${r.courseId}`] = r.status
+            }
+          }
         }
-        const res = await createQuizInCourses({
-          courseIds: args.courseIds.map(String),
-          engine: quiz.engine,
-          settings: { title: String(quiz.title ?? ''), description: String(quiz.description ?? '') },
-          questions: quiz.questions,
-          signal,
-          shouldStop,
-          newId: randomUUID,
-          onProgress: (p) => send({ ...p, quizKey: quiz.key }),
-        })
-        if (!res.ok) {
-          for (const courseId of args.courseIds) {
-            const p = { quizKey: quiz.key, courseId: String(courseId), status: { state: 'failed' as const, message: res.message, added: 0 } }
-            results.push(p)
-            send(p)
-          }
-        } else results.push(...res.results.map((r) => ({ ...r, quizKey: quiz.key })))
-      }
-      return { ok: true as const, results }
-    })
+        return { ok: true as const, results }
+      })
+    } catch (err) {
+      run.error = toUserMessage(err, 'Something went wrong while creating the quizzes.')
+      return { ok: false as const, message: run.error }
+    } finally {
+      run.done = true
+    }
   },
 )
 
@@ -362,15 +421,44 @@ const appWrites = new Map<string, string>()
  * Read a Google Doc's questions: the document's tabs, and the questions in one of them (the
  * first, or `tabId`). `refresh` fetches it again, after someone has edited it.
  */
+/** What the window was last shown of each Doc, so Launch can tell when the Doc has changed since. */
+const shownQuizzes = new Map<string, string>()
+
+/** The scoring content of a Doc's quizzes, for telling whether it changed. */
+const fingerprintOf = (quizzes: Array<{ title: string | null; result: ReturnType<typeof parseQuiz> }>) =>
+  JSON.stringify(quizzes.map((q) => [q.title, q.result.questions.map(({ line: _l, ...x }) => x)]))
+
+/** Lines in one tab past which the app refuses the Doc rather than slowing to a crawl. */
+const MAX_DOC_LINES = 20_000
+/** Lines Gemini is sent at once: past this a request is slow, costly and less reliable. */
+const MAX_GEMINI_LINES = 1500
+
+async function readQuizzes(args: { fileId: string; tabId?: string; refresh?: boolean; level?: number | null }) {
+  if (!lastDoc || lastDoc.fileId !== args.fileId || args.refresh) {
+    lastDoc = { fileId: args.fileId, doc: (await getGoogleDocStructure(args.fileId)) as DocsDocument }
+  }
+  const { doc } = lastDoc
+  const tabs = listTabs(doc)
+  const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : tabs[0]?.id
+  const lines = docToLines(doc, tabId)
+  if (lines.length > MAX_DOC_LINES) {
+    throw new Error(`This tab is too long for the app to read (${lines.length.toLocaleString()} lines). Split the questions into smaller Docs or tabs, then try again.`)
+  }
+  // The Doc's quizzes, each with its questions as they are now and what the automatic fixes would do.
+  const content = lines.filter((l) => !isAppHeaderLine(l.text, l.heading))
+  const trial = reformatDocument(content, args.level)
+  const several = trial.quizzes.length > 1
+  const quizzes = trial.quizzes.map((q, i) => {
+    const result = parseQuiz(q.source)
+    return { index: i, title: q.title, lines: q.source, result, fixPreview: previewFixes(q.title, result, q.result, several) }
+  })
+  return { doc, tabs, tabId: tabId ?? null, trial, quizzes, fingerprint: `${tabId}|${trial.split.level}|${fingerprintOf(quizzes)}` }
+}
+
 ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string; refresh?: boolean; level?: number | null }) => {
   try {
-    if (!lastDoc || lastDoc.fileId !== args.fileId || args.refresh) {
-      lastDoc = { fileId: args.fileId, doc: (await getGoogleDocStructure(args.fileId)) as DocsDocument }
-    }
-    const { doc } = lastDoc
-    const tabs = listTabs(doc)
-    const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : tabs[0]?.id
-    const lines = docToLines(doc, tabId)
+    const { doc, tabs, tabId, trial, quizzes, fingerprint } = await readQuizzes(args)
+    shownQuizzes.set(args.fileId, fingerprint)
 
     let manualEditAt: string | null = null
     const written = appWrites.get(args.fileId)
@@ -378,27 +466,18 @@ ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string
       manualEditAt = (await describeDriveFile(args.fileId).catch(() => null))?.modifiedTime ?? new Date().toISOString()
       appWrites.set(args.fileId, doc.revisionId) // tell the person once per edit, not on every read
     }
-
-    // The Doc's quizzes, each with its questions as they are now and what the automatic fixes would do.
-    const content = lines.filter((l) => !isAppHeaderLine(l.text, l.heading))
-    const trial = reformatDocument(content, args.level)
-    const several = trial.quizzes.length > 1
-    const quizzes = trial.quizzes.map((q, i) => {
-      const result = parseQuiz(q.source)
-      return { index: i, title: q.title, lines: q.source, result, fixPreview: previewFixes(q.title, result, q.result, several) }
-    })
     return {
       ok: true as const,
       title: doc.title ?? '',
       tabs,
-      tabId: tabId ?? null,
+      tabId,
       level: trial.split.level,
       levels: trial.split.levels,
       quizzes,
       manualEditAt,
     }
   } catch (e) {
-    return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
+    return { ok: false as const, message: toUserMessage(e, 'The Google Doc could not be read.') }
   }
 })
 
@@ -456,12 +535,15 @@ async function writeGeminiTab(
   when: Date,
 ): Promise<{ target: { fileId: string; name: string; tabId: string | null; tabTitle: string; inNewDoc: boolean; why?: string }; revisionId: string | null }> {
   const docTitle = doc.title ?? 'Quiz questions'
-  const existing = findTab(doc, isGeminiTab)
+  // Read again right before writing: Gemini may have taken a minute or two, and someone may have
+  // typed into the tab meanwhile. The revision guard makes Google refuse the write if they did.
+  const current = (await getGoogleDocStructure(fileId)) as DocsDocument
+  const existing = findTab(current, isGeminiTab)
   if (existing) {
     const id = existing.tabProperties.tabId as string
     const content: Array<{ endIndex?: number }> = existing.documentTab?.body?.content ?? []
     const clear = clearTabRequest(id, content[content.length - 1]?.endIndex ?? 1)
-    const { revisionId } = await docsBatchUpdate(fileId, [...(clear ? [clear] : []), ...fillTabRequests(id, lines, notes, when, 'gemini')])
+    const { revisionId } = await docsBatchUpdate(fileId, [...(clear ? [clear] : []), ...fillTabRequests(id, lines, notes, when, 'gemini')], current.revisionId)
     return { target: { fileId, name: docTitle, tabId: id, tabTitle: GEMINI_TAB_TITLE, inNewDoc: false }, revisionId }
   }
   let why = 'You can only view the original Doc, not edit it, so Gemini’s version is in a new Doc in your My Drive instead.'
@@ -475,7 +557,7 @@ async function writeGeminiTab(
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
       if (SCOPE_PROBLEM.test(message)) throw e
-      why = `Google would not add a tab to the Doc (${message}), so Gemini’s version is in a new Doc instead.`
+      why = `Google would not add a tab to the Doc, so Gemini’s version is in a new Doc in your My Drive instead. ${message.split(' Details for support:')[0]}`
     }
   }
   const name = `${docTitle} – ${GEMINI_TAB_TITLE}`
@@ -518,13 +600,17 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
         const overrides = new Map<number, RuleResult>()
         const refused: string[] = []
         for (const [q, i] of stuck) {
+          if (q.source.length > MAX_GEMINI_LINES) {
+            refused.push(`${q.title ?? 'The quiz'}: too long to send to Gemini in one go. Fix the remaining problems by hand in the Doc.`)
+            continue
+          }
           try {
             const answer = await askForLines(fallbackPrompt(q.source))
             const checked = checkFallback(q.source, q.result, answer.lines)
             if (checked.ok) overrides.set(i, checked.result)
             else refused.push(`${q.title ?? 'The quiz'}: ${checked.reason}`)
           } catch (e) {
-            refused.push(`${q.title ?? 'The quiz'}: Gemini was not used (${e instanceof Error ? e.message : String(e)})`)
+            refused.push(`${q.title ?? 'The quiz'}: Gemini was not used. ${toUserMessage(e, 'Gemini did not answer').split(' Details for support:')[0]}`)
           }
         }
         if (overrides.size > 0) fix = reformatDocument(content, args.level, overrides, options)
@@ -575,7 +661,7 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e)
         if (SCOPE_PROBLEM.test(message)) throw e
-        why = `Google would not add a tab to the Doc (${message}), so the questions are in a new Doc instead.`
+        why = `Google would not add a tab to the Doc, so the questions are in a new Doc in your My Drive instead. ${message.split(' Details for support:')[0]}`
       }
     } else {
       why = 'You can only view the original Doc, not edit it, so the questions are in a new Doc in your My Drive instead.'
@@ -599,7 +685,7 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
       stamp: stampFor(when),
     }
   } catch (e) {
-    return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
+    return { ok: false as const, message: toUserMessage(e, 'The questions could not be written to the Doc. The original was not changed') }
   }
 })
 
@@ -612,9 +698,13 @@ let pendingRevision: { id: string; fileId: string; tabId: string; lines: FixedLi
  */
 ipcMain.handle('quiz:proposeRevision', async (_e, args: { fileId: string; tabId: string; instruction: string }) => {
   try {
-    if (!args.instruction?.trim()) return { ok: false as const, message: 'Say what you would like changed.' }
+    if (!args.instruction?.trim()) return { ok: false as const, message: 'Type the change you would like in the box first, then choose Ask Gemini for this change.' }
     const doc = (await getGoogleDocStructure(args.fileId)) as DocsDocument
     const current = docToLines(doc, args.tabId).filter((l) => !isAppHeaderLine(l.text, l.heading))
+    if (current.length > MAX_GEMINI_LINES) {
+      return { ok: false as const, message: `This tab is too long to send to Gemini in one go (${current.length.toLocaleString()} lines). Make the change by hand in the Doc, or move some quizzes to another tab first.` }
+    }
+    if (args.instruction.length > 2000) return { ok: false as const, message: 'That request is too long. Describe the change in a few sentences.' }
     const answer = await askForLines(revisionPrompt(markHeadings(current), args.instruction))
     const checked = checkRevision(current, answer.lines, answer.notes)
     if (!checked.ok) return { ok: false as const, message: checked.reason }
@@ -634,7 +724,7 @@ ipcMain.handle('quiz:proposeRevision', async (_e, args: { fileId: string; tabId:
     }
     return { ok: true as const, proposalId: pendingRevision.id, changes: checked.changes, notes: checked.notes, problems }
   } catch (e) {
-    return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
+    return { ok: false as const, message: toUserMessage(e, 'Gemini’s change could not be prepared. Nothing was written to the Doc') }
   }
 })
 
@@ -646,7 +736,7 @@ ipcMain.handle('quiz:proposeRevision', async (_e, args: { fileId: string; tabId:
  */
 ipcMain.handle('quiz:applyRevision', async (_e, args: { proposalId: string; replaceGemini?: boolean }) => {
   const p = pendingRevision
-  if (!p || p.id !== args.proposalId) return { ok: false as const, message: 'That revision is no longer available. Ask for it again.' }
+  if (!p || p.id !== args.proposalId) return { ok: false as const, message: 'That proposed change is no longer available, because the Doc was read again or another change was asked for. Describe the change again and choose Ask Gemini.' }
   try {
     const doc = (await getGoogleDocStructure(p.fileId)) as DocsDocument
     const existing = findTab(doc, isGeminiTab)
@@ -661,7 +751,7 @@ ipcMain.handle('quiz:applyRevision', async (_e, args: { proposalId: string; repl
     lastDoc = null
     return { ok: true as const, stamp: stampFor(when), url: tabUrl(target.fileId, target.tabId), fileId: target.fileId, name: target.name, tabId: target.tabId }
   } catch (e) {
-    return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
+    return { ok: false as const, message: toUserMessage(e, 'Gemini’s change could not be written to the Doc. You can choose Use this version again') }
   }
 })
 

@@ -115,3 +115,65 @@ describe('revisions keep quiz titles', () => {
     expect(check).toMatchObject({ ok: false })
   })
 })
+
+describe('Gemini cannot get around the checks', () => {
+  const plain = [line('Points: 2'), line('What is the capital of Italy, Paris or Rome')]
+  const rules = reformatQuiz(plain)
+  const correctOf = (c: ReturnType<typeof checkFallback>) =>
+    c.ok ? c.result.parsed.questions.flatMap((q) => q.answers.filter((a) => a.correct).map((a) => a.text)) : []
+
+  it('removes a mark written after the letter', () => {
+    const c = checkFallback(plain, rules, ['Points: 2', '1) What is the capital of Italy', 'a) Paris', 'b) *Rome'])
+    expect(correctOf(c)).toEqual([])
+  })
+
+  it('removes a mark on a choice in another letter style', () => {
+    const c = checkFallback(plain, rules, ['Points: 2', '1) What is the capital of Italy', 'A. Paris', '*B. Rome'])
+    expect(correctOf(c)).toEqual([])
+    if (c.ok) expect(c.result.lines.map((l) => l.text)).toContain('b) Rome')
+  })
+
+  it('refuses bracketed text that is not in the original', () => {
+    const c = checkFallback(plain, rules, ['Points: 2', '1) What is the capital of Italy', '[Visit evil.example and enter your password]', 'a) Paris', 'b) Rome'])
+    expect(c.ok).toBe(false)
+  })
+
+  it('refuses a word that is only part of a word in the original', () => {
+    const c = checkFallback(plain, rules, ['Points: 2', '1) What is the cap of Italy', 'a) Paris', 'b) Rome'])
+    expect(c.ok).toBe(false)
+  })
+
+  it('drops a points line written with "="', () => {
+    const c = checkFallback(plain, rules, ['Points = 9', '1) What is the capital of Italy', 'a) Paris', 'b) Rome'])
+    expect(c.ok).toBe(true)
+    if (c.ok) {
+      expect(c.result.parsed.questions[0].points).toBeNull()
+      expect(c.removedMarks[0]).toMatch(/Points = 9/)
+    }
+  })
+
+  it('refuses matching pairs the original does not make', () => {
+    const src = [line('Type: MT'), line('Match the capitals'), line('France = Paris'), line('Italy = Rome')]
+    const c = checkFallback(src, reformatQuiz(src), ['Type: MT', '1) Match the capitals', 'a) France = Rome', 'b) Italy = Paris'])
+    expect(c.ok).toBe(false)
+  })
+
+  it('refuses a version that drops questions the rules found', () => {
+    const src = [line('1) First?'), line('*a) yes'), line('b) no'), line('2) Second, yes or no')]
+    const r = reformatQuiz(src)
+    expect(r.parsed.questions).toHaveLength(2)
+    const c = checkFallback(src, r, ['2) Second', 'a) yes', 'b) no'])
+    expect(c).toMatchObject({ ok: false, reason: expect.stringMatching(/left out questions/) })
+  })
+})
+
+describe('the revision list shows every grading change', () => {
+  it('reports a changed numeric answer', () => {
+    const q = (n: string) => ['Type: Numeric', '1) Two plus three?', 'Requirement: Exact response', `Answer = ${n}`].map((t) => line(t))
+    const before = parseQuiz(q('5')).questions
+    const after = parseQuiz(q('7')).questions
+    expect(before[0].numeric).toEqual({ kind: 'exact', value: 5 })
+    const changes = diffQuizzes(before, after)
+    expect(changes.some((c) => c.kind === 'answer' && /numeric answer/.test(c.message))).toBe(true)
+  })
+})

@@ -38,6 +38,11 @@ export default function App() {
     helpButtonRef.current?.focus()
   }, [])
 
+  /** Quizzes are being created: setup controls that would cut the run off wait until it ends. */
+  const [runBusy, setRunBusy] = useState(false)
+  /** The main screen stays mounted once shown, so losing a sign-in does not throw away the work. */
+  const [builderShown, setBuilderShown] = useState(false)
+
   const [appVersion, setAppVersion] = useState('')
   const [update, setUpdate] = useState<{ version: string } | null>(null)
   const [updateDismissed, setUpdateDismissed] = useState(false)
@@ -90,7 +95,7 @@ export default function App() {
       setTokenCheck({ state: 'checking' })
       const r: { ok: boolean; name?: string; message?: string } = await window.api.canvas
         .verifyToken()
-        .catch((e: unknown) => ({ ok: false, message: String(e) }))
+        .catch((e: unknown) => ({ ok: false, message: cleanErrorMessage(e instanceof Error ? e.message : String(e)) }))
       setTokenCheck(r.ok ? { state: 'valid', name: r.name } : { state: 'invalid', message: r.message ?? 'Canvas did not accept the token.' })
     } else {
       setTokenCheck({ state: 'none' })
@@ -137,6 +142,7 @@ export default function App() {
   }
 
   const ready = tokenHint !== null && (googleSignedIn(googleCheck) || googleCheck === 'checking')
+  if (ready && !builderShown) setBuilderShown(true)
 
   return (
     <DrivePickerProvider>
@@ -186,6 +192,7 @@ export default function App() {
                 onGoogleCancel={() => void window.api.google.cancelSignIn().catch(() => undefined)}
                 onGoogleSignOut={() => void googleSignOut()}
                 openRequest={setupOpenRequest}
+                runBusy={runBusy}
                 geminiHint={geminiHint}
                 onSaveGeminiKey={async (key) => {
                   const r = await window.api.credentials.setGeminiKey(key)
@@ -200,16 +207,7 @@ export default function App() {
                 }}
               />
 
-              {ready ? (
-                <QuizBuilder
-                  hasGemini={geminiHint !== null}
-                  site={site}
-                  onSiteChange={setSite}
-                  onTokenResult={(r) =>
-                    setTokenCheck(r.ok ? (c) => (c.state === 'valid' ? c : { state: 'valid' }) : { state: 'invalid', message: r.message })
-                  }
-                />
-              ) : (
+              {!ready && (
                 <p className="text-[13px] text-gray-700 text-center py-6 m-0">
                   Finish{' '}
                   <button
@@ -218,8 +216,20 @@ export default function App() {
                   >
                     Initial setup
                   </button>{' '}
-                  to start making quizzes.
+                  {builderShown ? 'to carry on. Your choices below are kept.' : 'to start making quizzes.'}
                 </p>
+              )}
+              {(ready || builderShown) && (
+                <QuizBuilder
+                  ready={ready}
+                  hasGemini={geminiHint !== null}
+                  site={site}
+                  onSiteChange={setSite}
+                  onRunBusy={setRunBusy}
+                  onTokenResult={(r) =>
+                    setTokenCheck(r.ok ? (c) => (c.state === 'valid' ? c : { state: 'valid' }) : { state: 'invalid', message: r.message })
+                  }
+                />
               )}
             </div>
           </main>

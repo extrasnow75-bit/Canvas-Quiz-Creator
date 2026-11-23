@@ -19,7 +19,6 @@ export type GoogleCheck = 'valid' | 'expired' | 'unknown' | 'none'
 export const SUPPORT_CONTACT = 'Greg Snow (gregsnow@boisestate.edu or extrasnow75@gmail.com)'
 
 const ASK_SUPPORT = `If it keeps happening, contact ${SUPPORT_CONTACT}.`
-const OR_LOCAL = 'Or choose “save a local copy” to save a file on your computer instead.'
 
 function details(text: string): string {
   const clean = redact(text).replace(/\s+/g, ' ').trim().slice(0, 200)
@@ -28,22 +27,19 @@ function details(text: string): string {
 
 /** "Initial setup" is the name of a panel on screen; the display wraps it in italics. */
 export const MSG_NOT_SIGNED_IN =
-  'You are not signed in to Google, so this cannot be saved to your Google Drive. ' +
-  'Open Initial setup at the top, choose Sign in with Google, and try again. ' +
-  OR_LOCAL
+  'You are not signed in to Google, so the app cannot read or write your Google Docs. ' +
+  'Open Initial setup at the top, choose Sign in with Google, and try again.'
 
 export const MSG_SIGN_IN_EXPIRED =
-  'Your Google sign-in has expired, so this cannot be saved to your Google Drive. ' +
-  'Open Initial setup at the top, choose Sign in with Google, and try again. ' +
-  OR_LOCAL
+  'Your Google sign-in has expired, so the app cannot read or write your Google Docs. ' +
+  'Open Initial setup at the top, choose Sign in with Google, and try again.'
 
 export const MSG_UNREACHABLE =
-  'The app could not reach Google. Check your internet connection and try again. ' +
-  'You can still choose “save a local copy” to save a file on your computer.'
+  'The app could not reach Google. Check your internet connection and try again.'
 
 export const MSG_NOT_SET_UP =
   'This copy of the app was not set up for Google sign-in, so Google features are not available in it. ' +
-  'You can still choose “Continue without Google” and save files to your computer. ' +
+  'The quiz questions come from Google Docs, so the app needs Google sign-in to work. ' +
   `If you expected Google sign-in to work, contact ${SUPPORT_CONTACT}.`
 
 /**
@@ -64,7 +60,23 @@ export const MSG_SIGN_IN_TIMEOUT =
 
 export const MSG_NO_REFRESH_TOKEN =
   'Google signed you in but did not give the app lasting access. In your Google Account, open Security, ' +
-  'then Third-party apps and services, remove Canvas Extractor Tools, and then sign in here again.'
+  'then Third-party apps and services, remove Canvas Quiz Creator, and then sign in here again.'
+
+/** The person unticked a box on Google's consent screen: the sign-in is not kept. */
+export const MSG_SCOPES_NOT_GRANTED =
+  'Google signed you in, but not every box was ticked on the Google screen that asks what to allow, ' +
+  'so the app could not read or write your Google Docs. You are not signed in. Choose Sign in with Google ' +
+  'again, and on that screen tick every box (or Select all) before choosing Continue.'
+
+/**
+ * The required scopes Google did not grant, from the token response's `scope` field. Google
+ * always sends that field; if it is ever missing, nothing is assumed missing.
+ */
+export function missingScopes(granted: string | undefined, required: string[]): string[] {
+  if (!granted) return []
+  const have = new Set(granted.split(/\s+/))
+  return required.filter((s) => !have.has(s))
+}
 
 export const MSG_KEYCHAIN =
   'This computer’s secure storage is not available, so the app cannot keep your Google sign-in. ' +
@@ -93,7 +105,7 @@ export function googleApiMessage(service: string, doing: string, status: number,
   const tail = details(`${service} ${status}. ${body}`)
   if (status === 401) return MSG_SIGN_IN_EXPIRED
   if (status === 403 && /storageQuotaExceeded|storage quota/i.test(body)) {
-    return 'Your Google Drive is full, so the file could not be saved. Free up some space in Google Drive and try again.'
+    return 'Your Google Drive is full, so the app could not write to it. Free up some space in Google Drive and try again.'
   }
   if (status === 429 || (status === 403 && /rateLimit|RATE_LIMIT/i.test(body))) {
     return `Google is busy right now. Wait a minute and try again.${tail}`
@@ -101,12 +113,12 @@ export function googleApiMessage(service: string, doing: string, status: number,
   // Google lets people untick the Drive box on its consent screen and still signs them in, so the
   // sign-in works and the first save fails. The fix is to sign in again and leave that box ticked.
   if (status === 403 && /insufficient (authentication scopes|permissions?)|insufficientPermissions|ACCESS_TOKEN_SCOPE_INSUFFICIENT/i.test(body)) {
-    return `Google signed you in, but you did not allow this app to use your Google Drive, so the file could not be saved. Open Initial setup at the top, sign out, choose Sign in with Google again, and tick the Drive box on the Google screen that asks what to allow. ${OR_LOCAL}${tail}`
+    return `Google signed you in, but you did not allow this app to use your Google Drive and Docs. Open Initial setup at the top, sign out, choose Sign in with Google again, and tick every box on the Google screen that asks what to allow.${tail}`
   }
   if (status === 403) {
     return `Google would not allow the app to do that while ${doing}. Try signing out and signing in again. ${ASK_SUPPORT}${tail}`
   }
-  if (status === 404) return `Google could not find the file it needed while ${doing}. Please run the extraction again.${tail}`
+  if (status === 404) return `Google could not find the file it needed while ${doing}. Check that the Doc has not been deleted or moved to the trash, then choose it again in step 1.${tail}`
   if (status >= 500) return `Google is having a problem right now. Wait a few minutes and try again.${tail}`
   return `Something went wrong while ${doing}. Please try again. ${ASK_SUPPORT}${tail}`
 }

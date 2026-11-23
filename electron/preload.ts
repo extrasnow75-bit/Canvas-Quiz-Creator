@@ -56,9 +56,9 @@ contextBridge.exposeInMainWorld('api', {
     getSite: () => invoke('canvas:getSite'),
     listCourses: (args: { site: string }) => invoke('canvas:listCourses', args),
     verifyToken: () => invoke('canvas:verifyToken'),
-    createQuiz: (args: unknown) => invoke('canvas:createQuiz', args),
     createQuizzes: (args: unknown) => invoke('canvas:createQuizzes', args),
     stopAfterCourse: (jobId: string) => invoke('canvas:stopAfterCourse', jobId),
+    currentRun: () => invoke('canvas:currentRun'),
     onProgress: (cb: (p: unknown) => void) => subscribe('quiz:progress', cb),
   },
   google: {

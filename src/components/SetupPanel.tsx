@@ -29,6 +29,19 @@ interface Props {
   /** Resolves with an error sentence when Gemini refuses the key, or null when it was saved. */
   onSaveGeminiKey(key: string): Promise<string | null>
   onRemoveGeminiKey(): Promise<void>
+  /** Quizzes are being created: signing out or removing the token now would cut the run off. */
+  runBusy?: boolean
+}
+
+const RUN_BUSY_NOTE = 'Quizzes are being created. Wait until the run finishes, then try again.'
+
+/** Shown under a button that cannot be used while a run is going. */
+function BusyNote({ id }: { id: string }) {
+  return (
+    <p id={id} className="mt-1.5 mb-0 text-xs text-gray-700">
+      {RUN_BUSY_NOTE}
+    </p>
+  )
 }
 
 /**
@@ -142,7 +155,7 @@ export function SetupPanel(p: Props) {
               </p>
               <button
                 onClick={p.onGoogleCancel}
-                className="py-1.5 px-3 rounded-lg border border-gray-400 bg-white text-[12.5px] font-bold text-gray-800 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="py-1.5 px-3 rounded-lg border border-gray-500 bg-white text-[12.5px] font-bold text-gray-800 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 Cancel
               </button>
@@ -157,8 +170,10 @@ export function SetupPanel(p: Props) {
                 {p.googleStatus.email && <p className="text-xs text-gray-600 truncate">{p.googleStatus.email}</p>}
               </div>
               <button
-                onClick={p.onGoogleSignOut}
-                className="text-xs font-bold text-gray-700 border border-gray-400 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 transition flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                onClick={() => !p.runBusy && p.onGoogleSignOut()}
+                aria-disabled={p.runBusy || undefined}
+                aria-describedby={p.runBusy ? 'setup-busy-google' : undefined}
+                className="aria-disabled:opacity-60 aria-disabled:cursor-not-allowed text-xs font-bold text-gray-700 border border-gray-500 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 transition flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 Sign out
               </button>
@@ -171,6 +186,7 @@ export function SetupPanel(p: Props) {
               Sign in with Google
             </button>
           )}
+          {googleOk && !p.googleBusy && p.runBusy && <BusyNote id="setup-busy-google" />}
           {p.googleError && (
             <p className="mt-2.5 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-2.5 text-[12.5px] text-red-800">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
@@ -225,11 +241,14 @@ export function SetupPanel(p: Props) {
                 {p.tokenHint}
               </p>
               <button
-                onClick={() => void p.onRemoveToken()}
-                className="w-full text-sm font-bold text-gray-700 border border-gray-400 rounded-lg py-2 hover:bg-gray-50 transition flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                onClick={() => !p.runBusy && void p.onRemoveToken()}
+                aria-disabled={p.runBusy || undefined}
+                aria-describedby={p.runBusy ? 'setup-busy-token' : undefined}
+                className="aria-disabled:opacity-60 aria-disabled:cursor-not-allowed w-full text-sm font-bold text-gray-700 border border-gray-500 rounded-lg py-2 hover:bg-gray-50 transition flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <LogOut className="w-4 h-4" aria-hidden="true" /> Remove token
               </button>
+              {p.runBusy && <BusyNote id="setup-busy-token" />}
             </>
           ) : (
             <>
@@ -324,7 +343,7 @@ function GeminiCard({ hint, onSave, onRemove }: { hint: string | null; onSave(ke
           </p>
           <button
             onClick={() => void onRemove()}
-            className="w-full text-sm font-bold text-gray-700 border border-gray-400 rounded-lg py-2 hover:bg-gray-50 transition flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="w-full text-sm font-bold text-gray-700 border border-gray-500 rounded-lg py-2 hover:bg-gray-50 transition flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <LogOut className="w-4 h-4" aria-hidden="true" /> Remove key
           </button>
@@ -355,8 +374,11 @@ function GeminiCard({ hint, onSave, onRemove }: { hint: string | null; onSave(ke
         </div>
       )}
       {error && (
-        <p role="alert" className="mt-2 text-[12.5px] text-red-800">
-          {error}
+        <p className="mt-2.5 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-2.5 text-[12.5px] text-red-800">
+          <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
+          <span role="alert">
+            <ErrorText message={error} />
+          </span>
         </p>
       )}
     </section>

@@ -45,19 +45,22 @@ export function isGoogleSecretConfigured(): boolean {
  *
  * `drive.file` alone would be the least-privilege choice — it grants access only to files this
  * app itself creates — and it is what the sibling Canvas Extractor Tools app uses. It is not
- * enough here: this app has an in-app Drive browser that lists and searches the user's existing
- * documents so they can pick a rubric to convert, and `drive.file` cannot see a file the app did
- * not create.
+ * enough here: the questions are in Google Docs that faculty members wrote, which the in-app
+ * Drive picker has to list and read, and `drive.file` cannot see a file the app did not create.
  *
  * `drive.readonly` is one of Google's **restricted** scopes. The consequences are worth stating
  * plainly, because they are not obvious:
- *   - While the consent screen stays in **Testing** with an explicit test-user allowlist, this is
- *     fine and needs no review.
- *   - **Publishing** the consent screen with a restricted scope requires an annual third-party
- *     security assessment, which is expensive. Do not publish this app casually.
- *   - Testing mode expires refresh tokens after **7 days**, so users re-authorise about weekly.
- *     That is a real annoyance, and it is why every document the app produces can also be saved
- *     locally without signing in at all.
+ *   - With an **External** consent screen in **Testing**, it needs no review, but only listed
+ *     test users can sign in, and Google ends every sign-in after **7 days**, so people sign in
+ *     again about once a week.
+ *   - **Publishing** an External consent screen with a restricted scope requires an annual
+ *     third-party security assessment, which is expensive.
+ *   - An **Internal** consent screen (a Cloud project owned by the university's Google Workspace)
+ *     avoids both: no review, no test-user list, and no 7-day limit, for anyone with a university
+ *     Google account. That is the setup to use for real use.
+ *
+ * Google lets people untick any of these on its consent screen and still completes the sign-in,
+ * so googleAuth.ts checks what was actually granted: see REQUIRED_SCOPES.
  */
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
@@ -69,6 +72,12 @@ export const GOOGLE_SCOPES = [
   'email',
   'profile',
 ].join(' ')
+
+/** The scopes the app cannot work without: a sign-in that lacks one is refused at once. */
+export const REQUIRED_SCOPES = [
+  'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/documents',
+]
 
 export function isGoogleConfigured(): boolean {
   return !GOOGLE_CLIENT_ID.startsWith('REPLACE_WITH')

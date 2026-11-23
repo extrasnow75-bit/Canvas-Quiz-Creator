@@ -9,6 +9,7 @@ import {
   GOOGLE_SCOPES,
   isGoogleConfigured,
   isGoogleSecretConfigured,
+  REQUIRED_SCOPES,
 } from './googleConfig'
 import {
   GoogleCheck,
@@ -17,6 +18,8 @@ import {
   notSetUpMessage,
   MSG_NOT_SIGNED_IN,
   MSG_NO_REFRESH_TOKEN,
+  MSG_SCOPES_NOT_GRANTED,
+  missingScopes,
   MSG_SIGN_IN_EXPIRED,
   MSG_SIGN_IN_TIMEOUT,
   MSG_UNREACHABLE,
@@ -44,6 +47,8 @@ interface TokenResponse {
   refresh_token?: string
   expires_in?: number
   id_token?: string
+  /** The scopes actually granted, space-separated. Can be fewer than were asked for. */
+  scope?: string
 }
 
 export interface GoogleStatus {
@@ -121,9 +126,9 @@ export function getStatus(): GoogleStatus {
  * app pulls itself back to the front rather than waiting behind the browser.
  */
 const COMPLETION_PAGE =
-  '<!doctype html><meta charset="utf-8"><title>Canvas Extractor Tools</title>' +
+  '<!doctype html><meta charset="utf-8"><title>Canvas Quiz Creator</title>' +
   '<body style="font-family:sans-serif;text-align:center;padding-top:60px">' +
-  '<h2>Canvas Extractor Tools</h2>' +
+  '<h2>Canvas Quiz Creator</h2>' +
   '<p id="msg">Sign-in complete — returning you to the app…</p>' +
   '<script>' +
   'function bye(){try{window.close()}catch(e){}}' +
@@ -175,6 +180,10 @@ export async function signIn(options?: { useAnotherAccount?: boolean }): Promise
   // person can fix, so they are told what still works rather than how to configure a build.
   if (!isGoogleConfigured()) throw new Error(notSetUpMessage('client ID'))
   if (!isGoogleSecretConfigured()) throw new Error(notSetUpMessage('client secret'))
+
+  // A sign-in still waiting for the browser (a second click, or a reloaded window) is stopped
+  // first, so only the newest browser tab can finish signing in.
+  cancelActiveSignIn?.()
 
   const verifier = base64url(randomBytes(32))
   const challenge = base64url(createHash('sha256').update(verifier).digest())
@@ -339,6 +348,12 @@ export async function signIn(options?: { useAnotherAccount?: boolean }): Promise
   }
   if (!data.refresh_token) {
     throw new Error(MSG_NO_REFRESH_TOKEN)
+  }
+  // Google completes the sign-in even when someone unticks Drive or Docs on its consent screen.
+  // Keeping that sign-in would look fine here and fail on the first Doc, which is what sends
+  // people round the sign-in again and again without knowing why. Say so now instead.
+  if (missingScopes(data.scope, REQUIRED_SCOPES).length > 0) {
+    throw new Error(MSG_SCOPES_NOT_GRANTED)
   }
   const profile = decodeIdToken(data.id_token)
   const tokens: StoredTokens = {

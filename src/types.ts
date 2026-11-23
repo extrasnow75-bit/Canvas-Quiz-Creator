@@ -121,7 +121,16 @@ export type ReformatResult =
   | { ok: false; needsConfirm: true; message: string }
   | { ok: false; needsConfirm?: undefined; message: string }
 
-export type CreateQuizResult = { ok: true; results: ProgressEvent[] } | { ok: false; message: string }
+export type CreateQuizResult = { ok: true; results: ProgressEvent[] } | { ok: false; changed?: true; message: string }
+
+export interface CurrentRun {
+  jobId: string
+  quizzes: Array<{ key: string; title: string; engine: QuizEngine; count: number }>
+  courses: CourseChoice[]
+  statuses: Record<string, CourseRunStatus>
+  done: boolean
+  error: string | null
+}
 
 declare global {
   interface Window {
@@ -152,20 +161,18 @@ declare global {
           { ok: true; site: string; courses: CourseChoice[] } | { ok: false; message: string }
         >
         verifyToken(): Promise<{ ok: boolean; name?: string; message?: string }>
-        createQuiz(args: {
-          courseIds: string[]
-          engine: QuizEngine
-          settings: { title: string; description: string }
-          questions: Question[]
-          jobId?: string
-        }): Promise<CreateQuizResult>
         createQuizzes(args: {
-          courseIds: string[]
-          quizzes: Array<{ key: string; title: string; description?: string; engine: QuizEngine; questions: Question[] }>
-          jobId?: string
+          fileId: string
+          tabId: string | null
+          level: number | null
+          picks: Array<{ index: number; title: string; engine: QuizEngine }>
+          courses: CourseChoice[]
+          jobId: string
         }): Promise<CreateQuizResult>
+        /** The run in progress, or the last one, so a reloaded window can show it again. */
+        currentRun(): Promise<CurrentRun | null>
         stopAfterCourse(jobId: string): Promise<void>
-        onProgress(callback: (p: ProgressEvent) => void): () => void
+        onProgress(callback: (p: ProgressEvent & { jobId?: string }) => void): () => void
       }
       google: {
         signIn(options?: { useAnotherAccount?: boolean }): Promise<GoogleStatus>

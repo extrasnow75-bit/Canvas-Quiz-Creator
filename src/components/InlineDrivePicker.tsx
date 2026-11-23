@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { AlertCircle, ChevronRight, Folder, Loader2 } from 'lucide-react'
 import type { DriveFile } from '../types'
+import { ErrorText, cleanErrorMessage } from './ErrorText'
 
 const GOOGLE_DOC_MIME = 'application/vnd.google-apps.document'
 type Scope = 'recent' | 'myDrive' | 'sharedWithMe'
@@ -35,6 +36,7 @@ export function InlineDrivePicker({ onPick, busy }: { onPick(file: { fileId: str
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const seq = useRef(0)
+  const listRef = useRef<HTMLDivElement>(null)
   const id = useId()
   const folder = folders[folders.length - 1]
 
@@ -52,7 +54,8 @@ export function InlineDrivePicker({ onPick, busy }: { onPick(file: { fileId: str
       })
       if (mine === seq.current) setFiles(res.files)
     } catch (e) {
-      if (mine === seq.current) setError(e instanceof Error ? e.message : 'Could not load your Drive files.')
+      if (mine === seq.current)
+        setError(e instanceof Error ? cleanErrorMessage(e.message) : 'Your Google Docs could not be loaded. Choose another place above to try again.')
     } finally {
       if (mine === seq.current) setLoading(false)
     }
@@ -105,7 +108,7 @@ export function InlineDrivePicker({ onPick, busy }: { onPick(file: { fileId: str
 
       {folders.length > 0 && !search && (
         <nav aria-label="Folder" className="flex flex-wrap items-center gap-1 px-3 py-1.5 text-xs text-gray-700 border-b border-gray-100">
-          <button onClick={() => setFolders([])} className="font-bold text-brand underline underline-offset-2">
+          <button onClick={() => { setFolders([]); listRef.current?.focus() }} className="font-bold text-brand underline underline-offset-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
             {SCOPES.find(([s]) => s === scope)?.[1]}
           </button>
           {folders.map((f, i) => (
@@ -114,7 +117,7 @@ export function InlineDrivePicker({ onPick, busy }: { onPick(file: { fileId: str
               {i === folders.length - 1 ? (
                 <b className="text-gray-900">{f.name}</b>
               ) : (
-                <button onClick={() => setFolders(folders.slice(0, i + 1))} className="font-bold text-brand underline underline-offset-2">
+                <button onClick={() => { setFolders(folders.slice(0, i + 1)); listRef.current?.focus() }} className="font-bold text-brand underline underline-offset-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
                   {f.name}
                 </button>
               )}
@@ -123,7 +126,7 @@ export function InlineDrivePicker({ onPick, busy }: { onPick(file: { fileId: str
         </nav>
       )}
 
-      <div className="max-h-[260px] overflow-y-auto" role="region" aria-label="Google Docs" aria-busy={loading}>
+      <div ref={listRef} tabIndex={-1} className="max-h-[260px] overflow-y-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand" role="region" aria-label={folder ? `Google Docs in ${folder.name}` : 'Google Docs'} aria-busy={loading}>
         {loading && (
           <p role="status" className="p-3.5 text-[13px] text-gray-700 flex items-center gap-2 m-0">
             <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> Loading your Google Docs…
@@ -132,7 +135,9 @@ export function InlineDrivePicker({ onPick, busy }: { onPick(file: { fileId: str
         {error && !loading && (
           <p className="p-3.5 flex items-start gap-2 text-[13px] text-red-800 m-0">
             <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-700" aria-hidden="true" />
-            <span role="alert">{error}</span>
+            <span role="alert">
+              <ErrorText message={error} />
+            </span>
           </p>
         )}
         {!loading && files && files.length === 0 && (
@@ -143,12 +148,15 @@ export function InlineDrivePicker({ onPick, busy }: { onPick(file: { fileId: str
             f.isFolder ? (
               <button
                 key={f.id}
-                onClick={() => setFolders([...folders, { id: f.id, name: f.name }])}
+                onClick={() => {
+                  setFolders([...folders, { id: f.id, name: f.name }])
+                  listRef.current?.focus()
+                }}
                 className="w-full flex items-center gap-3 px-3.5 py-2.5 border-b border-gray-100 text-left hover:bg-blue-50 focus:outline-none focus-visible:bg-blue-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
               >
-                <Folder className="w-[18px] h-[18px] text-gray-600 flex-shrink-0" aria-hidden="true" />
+                <Folder className="w-[18px] h-[18px] text-gray-700 flex-shrink-0" aria-hidden="true" />
                 <span className="flex-1 min-w-0 text-[13.5px] font-bold text-gray-900 truncate">{f.name}</span>
-                <ChevronRight className="w-4 h-4 text-gray-600" aria-hidden="true" />
+                <ChevronRight className="w-4 h-4 text-gray-700" aria-hidden="true" />
               </button>
             ) : (
               <button
@@ -163,7 +171,7 @@ export function InlineDrivePicker({ onPick, busy }: { onPick(file: { fileId: str
                 </svg>
                 <span className="flex-1 min-w-0">
                   <b className="block text-[13.5px] text-gray-900 truncate">{f.name}</b>
-                  <small className="text-xs text-gray-600">{modified(f.modifiedTime)}</small>
+                  <small className="text-xs text-gray-700">{modified(f.modifiedTime)}</small>
                 </span>
                 <span className="text-xs font-black text-brand">Open</span>
               </button>

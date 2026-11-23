@@ -11,6 +11,8 @@
  *      the in-app browser built on it is better in the ways that were annoying anyway: no
  *      separate Picker API key, no 403 overlay, no ten-second timeout.
  */
+import { ASK_SUPPORT, supportDetails } from './userMessage'
+import { SUPPORT_CONTACT } from './googleMessages'
 import { randomBytes } from 'crypto'
 import { getAccessToken } from './googleAuth'
 import { fetchWithRetry, RequestTimeoutError } from './httpRetry'
@@ -365,10 +367,14 @@ async function docsError(response: Response): Promise<Error> {
   const detail = await parseGoogleError(response)
   if (response.status === 403 && /insufficient|scope/i.test(detail)) return new Error(MSG_DOCS_SCOPE)
   if (/has not been used|is disabled|SERVICE_DISABLED/i.test(detail)) {
-    return new Error('The Google Docs API is not turned on for this app yet. Whoever set up the app needs to enable it in the Google Cloud Console.')
+    return new Error(`Google Docs is not turned on for this copy of the app, so it cannot read or write Docs. Contact ${SUPPORT_CONTACT}: the Google Docs API needs to be enabled in the Google Cloud Console.${supportDetails(detail)}`)
   }
   console.warn(`Google Docs request failed (${response.status})${detail ? `: ${detail}` : ''}`)
-  return new Error(`Google Docs could not make that change${detail ? `: ${detail}` : '.'}`)
+  if (response.status === 404) return new Error(`Google could not find that Doc. Check that it has not been deleted or moved to the trash, then choose it again in step 1.${supportDetails(`Docs 404. ${detail}`)}`)
+  if (response.status === 403) return new Error(`Google would not let the app change that Doc. You may only be able to view it: ask the owner for edit access, or make a copy and choose the copy in step 1.${supportDetails(`Docs 403. ${detail}`)}`)
+  if (response.status === 429) return new Error('Google is busy right now. Wait a minute and try again.')
+  if (response.status >= 500) return new Error(`Google Docs is having a problem right now. Wait a few minutes and try again.${supportDetails(`Docs ${response.status}. ${detail}`)}`)
+  return new Error(`Google Docs could not make that change. Please try again. ${ASK_SUPPORT}${supportDetails(`Docs ${response.status}. ${detail}`)}`)
 }
 
 /**
@@ -378,6 +384,8 @@ async function docsError(response: Response): Promise<Error> {
 export async function docsBatchUpdate(
   rawFileId: string,
   requests: object[],
+  /** The revision the requests were built from: Google refuses the batch if the Doc has moved on. */
+  requiredRevisionId?: string | null,
 ): Promise<{ replies: Array<Record<string, any>>; revisionId: string | null }> {
   const fileId = assertFileId(rawFileId)
   const accessToken = await getAccessToken()
@@ -386,11 +394,18 @@ export async function docsBatchUpdate(
     {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requests }),
+      body: JSON.stringify(requiredRevisionId ? { requests, writeControl: { requiredRevisionId } } : { requests }),
     },
     // Not repeatable: a retried insert would write the questions twice.
     { idempotent: false, timeoutMs: 90_000 },
   )
+  if (response.status === 400 && requiredRevisionId) {
+    const detail = await parseGoogleError(response)
+    if (/revision/i.test(detail)) {
+      throw new Error('Someone changed the Google Doc while the app was working on it, so nothing was written. Choose Read again, then try once more.')
+    }
+    throw await docsError(response)
+  }
   if (!response.ok) throw await docsError(response)
   const body = (await response.json()) as { replies?: Array<Record<string, any>>; writeControl?: { requiredRevisionId?: string } }
   return { replies: body.replies ?? [], revisionId: body.writeControl?.requiredRevisionId ?? null }

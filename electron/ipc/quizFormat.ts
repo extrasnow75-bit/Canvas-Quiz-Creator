@@ -61,7 +61,7 @@ const KEY_VALUE_RE = /^([a-z+/\- ]+?)\s*=\s*(.*)$/i
  * A question written some other way: "Question 3:", "Q3.", "3:", "3 -". The template wants "3)".
  * Such a line is a problem to fix, never a note to skip: skipping it would silently drop a question.
  */
-const OFF_TEMPLATE_QUESTION_RE = /^(?:(?:question|q)\s*#?\s*\d{1,4}\b|\d{1,4}\s*(?::|\s-)\s*\S)/i
+const OFF_TEMPLATE_QUESTION_RE = /^(?:(?:question|q)\s*#?\s*\d{1,4}\b|\d{1,4}\s*(?::(?!\d)|\s-)\s*\S)/i
 const OFF_TEMPLATE_MESSAGE =
   'This looks like a question, but it is not in the template format ("3) Question"), so it was not read. The automatic fixes can usually rewrite it.'
 const CALCULATOR_RE = /^show\s+(?:on[-\s]?screen\s+)?calculator\s*:?\s*(.*)$/i
@@ -425,7 +425,7 @@ function absorbLine(draft: Draft, text: string, raw: DocLine, i: number, report:
 
   if (EMPTY_ANSWER_RE.test(text)) {
     draft.inStem = false
-    report('error', 'This answer choice is empty.', i)
+    report('error', 'This answer choice is empty. Type the choice after the letter, or delete the line.', i)
     return
   }
 
@@ -435,7 +435,7 @@ function absorbLine(draft: Draft, text: string, raw: DocLine, i: number, report:
   }
 
   if (OFF_TEMPLATE_QUESTION_RE.test(text)) report('error', OFF_TEMPLATE_MESSAGE, i)
-  else report('warning', `This line was not understood and was left out: "${shorten(text)}"`, i)
+  else report('warning', `This line was not understood and was left out: "${shorten(text)}". Rewrite it in the template format, or delete it if it is not part of the question.`, i)
 }
 
 function hasNumericValues(fields: Record<string, string>): boolean {
@@ -471,7 +471,7 @@ function finalize(draft: Draft, report: Report): Question {
       if (declared !== 'text_only')
         report('warning', `Points says "${draft.pointsRaw.trim() || '(blank)'}", which is not a number. It will be worth 1 point.`, at)
     } else if (n < 0) {
-      report('error', 'Points cannot be negative.', at)
+      report('error', 'Points cannot be negative. Change it to 0 or more.', at)
     } else {
       q.points = n
     }
@@ -493,7 +493,7 @@ function finalize(draft: Draft, report: Report): Question {
       if (q.answers.length === 0) {
         report('error', 'No answer choices were found. Add choices like "*a) …", or add "Type: E" above the question for an essay.', at)
       } else {
-        if (q.answers.length < 2) report('error', 'Multiple choice needs at least two choices.', at)
+        if (q.answers.length < 2) report('error', 'Multiple choice needs at least two choices. Add another, like "b) …".', at)
         if (correct === 0) report('error', 'No answer is marked correct. Put * directly before the letter of the correct answer, like *b).', at)
         if (correct > 1) report('error', `${correct} answers are marked correct. For more than one correct answer, add "Type: MA" above the question.`, at)
       }
@@ -505,7 +505,7 @@ function finalize(draft: Draft, report: Report): Question {
       break
 
     case 'multiple_answers':
-      if (q.answers.length < 2) report('error', 'Multiple answer needs at least two choices.', at)
+      if (q.answers.length < 2) report('error', 'Multiple answer needs at least two choices. Add another, like "b) …".', at)
       if (correct === 0) report('error', 'No answer is marked correct. Put * before the letter of each correct answer.', at)
       break
 
@@ -542,7 +542,7 @@ function finalize(draft: Draft, report: Report): Question {
 
     case 'ordering':
       q.answers = q.answers.map((a) => ({ ...a, correct: true }))
-      if (q.answers.length < 2) report('error', 'Ordering needs at least two items, listed in the correct order.', at)
+      if (q.answers.length < 2) report('error', 'Ordering needs at least two items. List them in the correct order, like "a) first", "b) second".', at)
       break
 
     case 'multiple_dropdowns':
@@ -617,7 +617,7 @@ function buildNumeric(draft: Draft, report: Report): NumericAnswer | null {
     const start = num('range start')
     const end = num('range end')
     if (start !== null && end !== null) {
-      if (start > end) report('error', 'Range start is larger than range end.', at)
+      if (start > end) report('error', 'Range start is larger than range end. Swap the two numbers.', at)
       return { kind: 'range', start, end }
     }
   } else if (/precis/.test(kind)) {

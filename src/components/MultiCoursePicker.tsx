@@ -3,7 +3,7 @@ import { AlertCircle, AlertTriangle, Loader2, RefreshCw, X } from 'lucide-react'
 import { CoursesIcon, IconTile, STEP_TILE } from './Icons'
 import type { CourseChoice } from '../types'
 import { countCourses, DEFAULT_SITE, NO_TERM_GROUP, siteHost, visibleGroups } from './courseFilter'
-import { ErrorText } from './ErrorText'
+import { ErrorText, cleanErrorMessage } from './ErrorText'
 
 const ROLE_STYLE = {
   teacher: 'bg-indigo-100 text-indigo-900',
@@ -39,6 +39,22 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
   const [editingSite, setEditingSite] = useState(false)
   const [siteInput, setSiteInput] = useState('')
   const latest = useRef(0)
+  const changeSiteRef = useRef<HTMLButtonElement>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const chipsRef = useRef<HTMLDivElement>(null)
+  const closeSiteEditor = () => {
+    setEditingSite(false)
+    setTimeout(() => changeSiteRef.current?.focus(), 0)
+  }
+  /** Removing a chip moves focus to the next chip, or to the search box when none is left. */
+  const removeChip = (c: CourseChoice, at: number) => {
+    setPicked([c], false)
+    setTimeout(() => {
+      const buttons = chipsRef.current?.querySelectorAll<HTMLButtonElement>('button[data-chip]')
+      const next = buttons && buttons.length > 0 ? buttons[Math.min(at, buttons.length - 1)] : null
+      ;(next ?? searchRef.current)?.focus()
+    }, 0)
+  }
   const id = useId()
   const current = site ?? DEFAULT_SITE
 
@@ -61,7 +77,8 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
         if (/token/i.test(res.message)) onTokenResult({ ok: false, message: res.message })
       }
     } catch (err) {
-      if (mine === latest.current) setError(err instanceof Error ? err.message : 'Could not load your courses.')
+      if (mine === latest.current)
+        setError(err instanceof Error ? cleanErrorMessage(err.message) : 'Your courses could not be loaded. Choose Refresh to try again.')
     } finally {
       if (mine === latest.current) setLoading(false)
     }
@@ -88,7 +105,7 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
 
   return (
     <section aria-labelledby={`${id}-h`} className={`rounded-2xl border-2 bg-white p-4 ${n > 0 ? 'border-green-200 shadow-[0_0_0_3px_rgba(240,253,244,1)]' : 'border-gray-200'}`}>
-      <div className="flex items-center gap-3 mb-1.5">
+      <div className="flex flex-wrap items-center gap-3 mb-1.5">
         <IconTile color={STEP_TILE.courses}>
           <CoursesIcon />
         </IconTile>
@@ -98,11 +115,12 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
             Canvas courses
           </h2>
         </div>
-        <span className="ml-auto text-xs text-gray-600 flex items-center gap-1.5">
+        <span className="ml-auto text-xs text-gray-700 flex flex-wrap items-center gap-1.5">
           {editingSite ? null : (
             <>
               {siteHost(current)} ·
               <button
+                ref={changeSiteRef}
                 onClick={() => {
                   setSiteInput(siteHost(current))
                   setEditingSite(true)
@@ -122,7 +140,7 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
           )}
         </span>
       </div>
-      <p className="text-[13px] text-gray-600 mb-3">
+      <p className="text-[13px] text-gray-700 mb-3">
         Tick every course that should get these quizzes. Each quiz is created, unpublished, in every course you tick.
       </p>
 
@@ -136,9 +154,9 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
             onChange={(e) => setSiteInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
-                setEditingSite(false)
+                closeSiteEditor()
                 void load(siteInput)
-              } else if (e.key === 'Escape') setEditingSite(false)
+              } else if (e.key === 'Escape') closeSiteEditor()
             }}
             placeholder="yourschool.instructure.com"
             spellCheck={false}
@@ -146,29 +164,30 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
           />
           <button
             onClick={() => {
-              setEditingSite(false)
+              closeSiteEditor()
               void load(siteInput)
             }}
-            className="font-black text-brand underline underline-offset-2"
+            className="font-black text-brand underline underline-offset-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Load courses
           </button>
-          <button onClick={() => setEditingSite(false)} className="font-bold text-gray-700 underline underline-offset-2">
+          <button onClick={closeSiteEditor} className="font-bold text-gray-700 underline underline-offset-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
             Cancel
           </button>
         </div>
       )}
 
       {/* What is ticked, as removable chips. */}
-      <div className="flex flex-wrap items-center gap-1.5 min-h-10 px-2.5 py-2 rounded-xl bg-slate-50 border border-gray-200 mb-2.5">
+      <div ref={chipsRef} className="flex flex-wrap items-center gap-1.5 min-h-10 px-2.5 py-2 rounded-xl bg-slate-50 border border-gray-200 mb-2.5">
         <span role="status" className="text-[12.5px] font-black text-gray-900 mr-1">
           {n === 0 ? 'No courses selected' : n === 1 ? '1 course selected:' : `${n} courses selected:`}
         </span>
-        {selected.map((c) => (
+        {selected.map((c, at) => (
           <span key={c.id} className="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full bg-[#dbe7fb] text-[#0a2a6b] text-xs font-bold">
             {c.code || c.name}
             <button
-              onClick={() => setPicked([c], false)}
+              data-chip
+              onClick={() => removeChip(c, at)}
               aria-label={`Remove ${c.name}`}
               className="w-5 h-5 rounded-full flex items-center justify-center hover:bg-white/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
@@ -177,18 +196,19 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
           </span>
         ))}
         {n > 0 && (
-          <button onClick={() => onChange([])} className="ml-auto text-xs font-bold text-gray-700 underline underline-offset-2 px-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+          <button onClick={() => { onChange([]); searchRef.current?.focus() }} className="ml-auto text-xs font-bold text-gray-700 underline underline-offset-2 px-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
             Clear all
           </button>
         )}
       </div>
 
-      <div className="flex gap-2 mb-2.5">
+      <div className="flex flex-wrap gap-2 mb-2.5">
         <label htmlFor={`${id}-q`} className="sr-only">
           Search your courses
         </label>
         <input
           id={`${id}-q`}
+          ref={searchRef}
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -254,7 +274,7 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
                       <input type="checkbox" checked={on} onChange={() => setPicked([c], !on)} className="w-4 h-4 flex-shrink-0 accent-brand" />
                       <span className="flex-1 min-w-0">
                         <b className="block text-[13.5px] text-gray-900">{c.name}</b>
-                        {c.code && <small className="text-xs text-gray-600">{c.code}</small>}
+                        {c.code && <small className="text-xs text-gray-700">{c.code}</small>}
                       </span>
                       {c.blueprint && <span className="text-[10.5px] font-black rounded-full px-2 py-0.5 bg-purple-100 text-purple-900">BLUEPRINT</span>}
                       {c.ended && <span className="text-[10.5px] font-black rounded-full px-2 py-0.5 bg-gray-100 text-gray-700">ENDED</span>}

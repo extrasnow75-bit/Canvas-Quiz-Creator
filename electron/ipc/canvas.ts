@@ -8,6 +8,7 @@
  *
  * Structure carried over from Canvas Rubric Creator; quiz creation is new.
  */
+import { ASK_SUPPORT, supportDetails } from './userMessage'
 import { getCanvasToken } from './credentials'
 import { fetchWithRetry, RequestTimeoutError } from './httpRetry'
 import { readSettings } from './settings'
@@ -73,8 +74,8 @@ async function readError(response: Response): Promise<string> {
 }
 
 function unreachableMessage(e: unknown): string {
-  if (e instanceof RequestTimeoutError) return 'Canvas did not answer in time.'
-  return `Could not reach Canvas: ${e instanceof Error ? e.message : String(e)}`
+  if (e instanceof RequestTimeoutError) return 'Canvas did not answer in time. Check your internet connection, wait a minute, then try again.'
+  return `The app could not reach Canvas. Check your internet connection and the Canvas site address in step 4, then try again.${supportDetails(e instanceof Error ? e.message : String(e))}`
 }
 
 /** A course id is digits and nothing else; anything else never reaches a URL. */
@@ -94,7 +95,7 @@ export async function verifyToken(): Promise<{ ok: boolean; name?: string; messa
   try {
     const response = await fetchWithRetry(`${origin}/api/v1/users/self/profile`, { headers: authHeaders(token) }, { idempotent: true })
     if (response.status === 401) return { ok: false, message: EXPIRED_TOKEN_MESSAGE }
-    if (!response.ok) return { ok: false, message: `Canvas responded with ${response.status}.` }
+    if (!response.ok) return { ok: false, message: `Canvas could not check your token just now. Wait a minute, then try again. ${ASK_SUPPORT}${supportDetails(`Canvas ${response.status}`)}` }
     const profile = await readJson<{ name?: string }>(response)
     return { ok: true, name: profile.name }
   } catch (e) {
@@ -113,7 +114,7 @@ async function fetchCoursePages(origin: string, query: string, token: string): P
   for (let page = 0; url && page < MAX_COURSE_PAGES; page++) {
     const response: Response = await fetchWithRetry(url, { headers: authHeaders(token) }, { idempotent: true })
     if (response.status === 401) throw new CourseListError(EXPIRED_TOKEN_MESSAGE)
-    if (!response.ok) throw new CourseListError(`Canvas error (${response.status}): ${await readError(response)}`)
+    if (!response.ok) throw new CourseListError(courseListMessage(response.status, await readError(response)))
     const data: unknown = await readJson(response)
     if (Array.isArray(data)) all.push(...(data as RawCourse[]))
     url = nextPageUrl(response.headers.get('link'), origin)
@@ -147,13 +148,30 @@ export async function listCourses(
 
 // ─── Creating a quiz ───────────────────────────────────────────────────────────
 
-function failureMessage(status: number, detail: string): string {
+function courseListMessage(status: number, detail: string): string {
+  const tail = supportDetails(`Canvas ${status}. ${detail}`)
+  if (status === 403) return `Canvas would not list your courses with this token. Make a new token in Canvas under Account → Settings → New Access Token, then save it in Initial setup.${tail}`
+  if (status === 404) return `Canvas could not find that site's course list. Check the Canvas site address, for example yourschool.instructure.com, then try again.${tail}`
+  if (status === 429) return 'Canvas is busy and asked the app to slow down. Wait a minute, then choose Try again.'
+  if (status >= 500) return `Canvas is having a problem right now. Wait a few minutes, then try again.${tail}`
+  return `Canvas could not list your courses. Please try again. ${ASK_SUPPORT}${tail}`
+}
+
+/** A failed create, by what it means and what to do next, for the results list. */
+export function failureMessage(status: number, detail: string, engine: QuizEngine): string {
+  const tail = supportDetails(`Canvas ${status}. ${detail}`)
   if (status === 401) return EXPIRED_TOKEN_MESSAGE
   if (status === 403)
-    return 'Canvas refused: your role in this course cannot create quizzes. Check that you are a teacher, designer or course administrator there.'
-  if (status === 404) return 'Canvas could not find this course, or New Quizzes is not turned on for it.'
-  if (status === 429) return 'Canvas is busy and asked the app to slow down. Wait a minute, then try again.'
-  return `Canvas error (${status}): ${detail}`
+    return `Canvas did not let you create quizzes in this course. Check that you are a teacher, designer or course administrator there, or remove the course in step 4.${tail}`
+  if (status === 404) {
+    return engine === 'new'
+      ? `Canvas could not find New Quizzes in this course. New Quizzes may not be turned on there: go back, choose Classic for this quiz in step 2, and launch again.${tail}`
+      : `Canvas could not find this course. It may have been deleted. Remove it in step 4, then launch again.${tail}`
+  }
+  if (status === 429) return 'Canvas is busy and asked the app to slow down. Wait a minute, then launch again for this course.'
+  if (status === 400 || status === 422) return `Canvas would not accept this quiz as written. Check the question in the Doc, then launch again for this course. ${ASK_SUPPORT}${tail}`
+  if (status >= 500) return `Canvas is having a problem right now. Wait a few minutes, then launch again for this course.${tail}`
+  return `Canvas could not create the quiz. Please try again. ${ASK_SUPPORT}${tail}`
 }
 
 /** One course: create the quiz, then add each question in order, reporting as it goes. */
@@ -181,10 +199,10 @@ async function createInCourse(args: {
   let added = 0
   try {
     const created = await post(base, engine === 'classic' ? classicQuizBody(args.settings) : newQuizBody(args.settings))
-    if (!created.ok) return { state: 'failed', message: failureMessage(created.status, await readError(created)), added: 0 }
+    if (!created.ok) return { state: 'failed', message: failureMessage(created.status, await readError(created), engine), added: 0 }
     const quiz = await readJson<{ id?: number | string; assignment_id?: number | string }>(created)
     const quizId = String(quiz.id ?? quiz.assignment_id ?? '')
-    if (!/^\d+$/.test(quizId)) return { state: 'failed', message: 'Canvas created the quiz but did not say its id.', added: 0 }
+    if (!/^\d+$/.test(quizId)) return { state: 'failed', message: `Canvas created the quiz but did not send back its id, so no questions were added. Find the empty quiz in Canvas, delete it, then launch again. ${ASK_SUPPORT}`, added: 0 }
     quizUrl =
       engine === 'classic'
         ? `${origin}/courses/${courseId}/quizzes/${quizId}`
@@ -198,7 +216,7 @@ async function createInCourse(args: {
       if (!response.ok) {
         return {
           state: 'failed',
-          message: `Question ${q.number ?? i + 1}: ${failureMessage(response.status, await readError(response))}`,
+          message: `Question ${q.number ?? i + 1}: ${failureMessage(response.status, await readError(response), engine)}`,
           added,
           quizUrl,
         }

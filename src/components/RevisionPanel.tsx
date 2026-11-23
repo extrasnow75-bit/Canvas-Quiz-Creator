@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, AlertTriangle, Check, Loader2, Sparkles, X } from 'lucide-react'
 import type { ProposeRevisionResult } from '../types'
-import { ErrorText } from './ErrorText'
+import { ErrorText, cleanErrorMessage } from './ErrorText'
 
 type Proposal = Extract<ProposeRevisionResult, { ok: true }>
 
@@ -25,6 +25,16 @@ export function RevisionPanel(props: {
   const [error, setError] = useState<string | null>(null)
   const [proposal, setProposal] = useState<Proposal | null>(null)
   const [confirm, setConfirm] = useState<string | null>(null)
+  const proposalRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // A proposal belongs to the tab as it was read: the panel is remounted on every read, and the
+  // proposal held in the main process goes with it.
+  const held = useRef<string | null>(null)
+  held.current = proposal?.proposalId ?? null
+  useEffect(() => () => {
+    if (held.current) void window.api.quiz.discardRevision()
+  }, [])
 
   const ask = async () => {
     setBusy('asking')
@@ -32,10 +42,12 @@ export function RevisionPanel(props: {
     setProposal(null)
     try {
       const res = await window.api.quiz.proposeRevision({ fileId: props.fileId, tabId: props.tabId, instruction })
-      if (res.ok) setProposal(res)
-      else setError(res.message)
+      if (res.ok) {
+        setProposal(res)
+        setTimeout(() => proposalRef.current?.focus(), 0)
+      } else setError(res.message)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'The request did not work.')
+      setError(e instanceof Error ? cleanErrorMessage(e.message) : 'Gemini’s change could not be prepared. Nothing was written. Please try again.')
     } finally {
       setBusy(null)
     }
@@ -57,7 +69,7 @@ export function RevisionPanel(props: {
       setInstruction('')
       props.onApplied(res.stamp, { fileId: res.fileId, name: res.name, tabId: res.tabId })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'The revision could not be written.')
+      setError(e instanceof Error ? cleanErrorMessage(e.message) : 'Gemini’s change could not be written to the Doc. Please try again.')
     } finally {
       setBusy(null)
     }
@@ -65,7 +77,9 @@ export function RevisionPanel(props: {
 
   const discard = () => {
     setProposal(null)
+    setConfirm(null)
     void window.api.quiz.discardRevision()
+    setTimeout(() => inputRef.current?.focus(), 0)
   }
 
   const graded = proposal?.changes.filter((c) => c.kind !== 'format') ?? []
@@ -100,6 +114,7 @@ export function RevisionPanel(props: {
           </label>
           <textarea
             id="revise-input"
+            ref={inputRef}
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
             rows={2}
@@ -118,14 +133,14 @@ export function RevisionPanel(props: {
       )}
 
       {proposal && (
-        <div role="group" aria-label="Proposed change" className="rounded-xl border-2 border-purple-300 p-3.5 space-y-3">
-          <p className="text-sm font-black text-gray-900 m-0">Gemini’s proposed change</p>
+        <div ref={proposalRef} tabIndex={-1} role="group" aria-labelledby="revise-proposal-h" className="rounded-xl border-2 border-purple-300 p-3.5 space-y-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+          <h3 id="revise-proposal-h" className="text-sm font-black text-gray-900 m-0">Gemini’s proposed change</h3>
           {graded.length > 0 && (
             <div className="rounded-lg border-2 border-amber-400 bg-amber-50 p-3">
-              <p className="flex items-center gap-2 text-xs font-black text-amber-900 uppercase tracking-wide m-0">
+              <h4 className="flex items-center gap-2 text-xs font-black text-amber-900 uppercase tracking-wide m-0">
                 <AlertTriangle className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                 Check these answers and points
-              </p>
+              </h4>
               <ul className="mt-2 mb-0 space-y-1 pl-4">
                 {graded.map((c, i) => (
                   <li key={i} className="text-[12.5px] text-gray-900">
@@ -137,7 +152,7 @@ export function RevisionPanel(props: {
           )}
           {wording.length > 0 && (
             <div>
-              <p className="text-xs font-black text-gray-800 uppercase tracking-wide m-0">Other changes</p>
+              <h4 className="text-xs font-black text-gray-800 uppercase tracking-wide m-0">Other changes</h4>
               <ul className="mt-1 mb-0 space-y-0.5 pl-4">
                 {wording.map((c, i) => (
                   <li key={i} className="text-[12.5px] text-gray-700">
@@ -169,19 +184,19 @@ export function RevisionPanel(props: {
             <button
               onClick={discard}
               disabled={busy !== null}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-400 bg-white text-gray-800 text-xs font-bold hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-500 bg-white text-gray-800 text-xs font-bold hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <X className="w-3.5 h-3.5" aria-hidden="true" /> Discard
             </button>
           </div>
           {confirm && (
-            <div role="alertdialog" aria-label="Replace the Revised by Gemini tab?" className="rounded-lg border border-purple-300 bg-purple-50 p-2.5">
+            <div role="alert" onKeyDown={(e) => e.key === 'Escape' && setConfirm(null)} className="rounded-lg border border-purple-300 bg-purple-50 p-2.5">
               <p className="m-0 text-[12.5px] text-gray-800">{confirm}</p>
               <div className="flex flex-wrap gap-2 mt-2">
-                <button onClick={() => void apply(true)} className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-black focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+                <button ref={(el) => el?.focus()} onClick={() => void apply(true)} className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-black focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
                   Replace it
                 </button>
-                <button onClick={() => setConfirm(null)} className="px-3 py-1.5 rounded-lg border border-gray-400 bg-white text-xs font-bold text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                <button onClick={() => setConfirm(null)} className="px-3 py-1.5 rounded-lg border border-gray-500 bg-white text-xs font-bold text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
                   Keep it
                 </button>
               </div>

@@ -62,11 +62,14 @@ function Choice({ text, correct }: { text: string; correct: boolean }) {
   return (
     <li className={`list-none flex items-start gap-2 text-[13px] ${correct ? 'text-green-900 font-bold' : 'text-gray-700'}`}>
       {correct ? (
-        <Check className="w-4 h-4 mt-px flex-shrink-0 text-green-600" aria-label="Correct" />
+        <Check className="w-4 h-4 mt-px flex-shrink-0 text-green-700" aria-hidden="true" />
       ) : (
-        <X className="w-4 h-4 mt-px flex-shrink-0 text-gray-400" aria-hidden="true" />
+        <X className="w-4 h-4 mt-px flex-shrink-0 text-gray-600" aria-hidden="true" />
       )}
-      <span>{text}</span>
+      <span>
+        {text}
+        <span className="sr-only">{correct ? ' (correct)' : ' (incorrect)'}</span>
+      </span>
     </li>
   )
 }
@@ -115,7 +118,7 @@ function QuestionBody({ q }: { q: Question }) {
         <ul className="mt-2 space-y-1 p-0 text-[13px]">
           {q.dropdowns.map((d, i) => (
             <li key={i} className="list-none text-gray-800">
-              <b>[{d.variable}]</b> {d.options.map((o) => (o.correct ? `✓ ${o.text}` : o.text)).join(' · ')}
+              <b>[{d.variable}]</b> {d.options.map((o, k) => <span key={k}>{k > 0 && ' · '}{o.correct && <><span aria-hidden="true">✓ </span><span className="sr-only">(correct) </span></>}{o.text}</span>)}
             </li>
           ))}
         </ul>

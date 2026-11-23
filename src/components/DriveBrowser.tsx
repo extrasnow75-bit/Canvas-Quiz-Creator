@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ErrorText, cleanErrorMessage } from './ErrorText';
 import { useDialogFocus } from '../hooks/useDialogFocus';
 import {
   X,
@@ -150,7 +151,7 @@ export const DriveBrowser: React.FC<DriveBrowserProps> = ({
       setFiles(result.files);
     } catch (e) {
       if (seq !== requestSeq.current) return;
-      setError(e instanceof Error ? e.message : 'Could not load your Drive files.');
+      setError(e instanceof Error ? cleanErrorMessage(e.message) : 'Your Google Drive files could not be loaded. Choose Try again.');
       setFiles([]);
     } finally {
       if (seq === requestSeq.current) setLoading(false);
@@ -342,7 +343,7 @@ export const DriveBrowser: React.FC<DriveBrowserProps> = ({
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-full py-16 px-8 text-center">
               <AlertCircle className="w-8 h-8 text-red-500 mb-3" />
-              <p className="text-sm text-gray-700 max-w-md">{error}</p>
+              <p role="alert" className="text-sm text-gray-700 max-w-md"><ErrorText message={error} /></p>
               <button
                 onClick={() => void load()}
                 className="mt-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-lg font-bold text-sm"

@@ -24,6 +24,31 @@ function choicesOf(q: Question): string[] {
   return q.answers.map((a) => norm(a.text))
 }
 
+/** Everything else that decides a student's score, in a form that compares as text. */
+function scoringOf(q: Question): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (q.numeric) out['numeric answer'] = JSON.stringify(q.numeric)
+  if (q.categories.length) {
+    out['categories'] = JSON.stringify(q.categories.map((c) => [norm(c.name), [...c.items.map(norm)].sort()]))
+  }
+  if (q.type === 'categorization' && q.distractors.length) out['distractors'] = JSON.stringify([...q.distractors.map(norm)].sort())
+  if (q.dropdowns.length) {
+    out['dropdown answers'] = JSON.stringify(q.dropdowns.map((d) => [norm(d.variable), d.options.map((o) => `${o.correct ? '*' : ''}${norm(o.text)}`)]))
+  }
+  if (q.type === 'ordering') out['order'] = JSON.stringify(q.answers.map((a) => norm(a.text)))
+  if (q.fileUpload) out['file upload settings'] = JSON.stringify(q.fileUpload)
+  return out
+}
+
+const describe = (field: string, v: string | undefined) => {
+  if (v === undefined) return 'none'
+  if (field === 'numeric answer') {
+    const n = JSON.parse(v) as Record<string, unknown>
+    return Object.entries(n).filter(([k]) => k !== 'kind').map(([k, x]) => `${k} ${x}`).join(', ')
+  }
+  return v.length > 120 ? `${v.slice(0, 117)}…` : v
+}
+
 const label = (q: Question, i: number) => `Question ${q.number ?? i + 1}`
 const list = (xs: string[]) => (xs.length ? xs.map((x) => `“${x}”`).join(', ') : 'none')
 
@@ -55,6 +80,13 @@ export function diffQuizzes(before: Question[], after: Question[]): Change[] {
 
     if (correctOf(a).join('|') !== correctOf(b).join('|')) {
       changes.push({ kind: 'answer', question: b.number, message: `${name}: correct answer changes from ${list(correctOf(a))} to ${list(correctOf(b))}.` })
+    }
+    const sa = scoringOf(a)
+    const sb = scoringOf(b)
+    for (const field of new Set([...Object.keys(sa), ...Object.keys(sb)])) {
+      if (sa[field] !== sb[field]) {
+        changes.push({ kind: 'answer', question: b.number, message: `${name}: ${field} changes from ${describe(field, sa[field])} to ${describe(field, sb[field])}.` })
+      }
     }
     if ((a.points ?? 1) !== (b.points ?? 1)) {
       changes.push({ kind: 'grading', question: b.number, message: `${name}: points change from ${a.points ?? 1} to ${b.points ?? 1}.` })

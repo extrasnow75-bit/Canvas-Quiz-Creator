@@ -59,7 +59,8 @@ function levelsAbove(lines: DocLine[]): Map<number, number> {
 /** A heading that names a place in the course rather than a quiz: "Module 3", "[Module #]", "Week 2". */
 const PLACE_LABEL = /^\[?\s*(?:module|week|unit|chapter|lesson|part|session|topic)\b[\s#\d\]:.-]*$/i
 
-const TEMPLATE_HEADING = /\btemplates?\b|^instructions\b/i
+// "Instructions and Question Type Templates", "Multiple Choice Template:", "Instructions". Not "HTML Templates Quiz".
+const TEMPLATE_HEADING = /^instructions\b.*\btemplates?\b|\btemplate\s*:?\s*$|^instructions\s*:?\s*$/i
 
 function setAsideTemplates(lines: DocLine[]): { content: DocLine[]; reference: Map<number, DocLine[]> } {
   // Lines inside a template section are pulled out, remembering where they were, so the reformatted

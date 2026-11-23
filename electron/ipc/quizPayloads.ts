@@ -233,7 +233,8 @@ export function newQuizItemBody(q: Question, index: number, newId: () => string)
       break
     }
     case 'matching': {
-      const questions = q.matches.map((m) => ({ id: newId(), item_body: m.left, answer: m.right }))
+      // item_body fields hold HTML in New Quizzes: Doc text is escaped so it shows as typed.
+      const questions = q.matches.map((m) => ({ id: newId(), item_body: escapeHtml(m.left), answer: m.right }))
       const answers = [...new Set([...q.matches.map((m) => m.right), ...q.distractors])]
       entry.interaction_type_slug = 'matching'
       entry.interaction_data = { answers, questions: questions.map(({ answer: _a, ...rest }) => rest) }
@@ -251,10 +252,10 @@ export function newQuizItemBody(q: Question, index: number, newId: () => string)
     case 'categorization': {
       const categories = q.categories.map((c) => ({
         id: newId(),
-        item_body: c.description ? `${c.name}: ${c.description}` : c.name,
-        items: c.items.map((text) => ({ id: newId(), item_body: text })),
+        item_body: escapeHtml(c.description ? `${c.name}: ${c.description}` : c.name),
+        items: c.items.map((text) => ({ id: newId(), item_body: escapeHtml(text) })),
       }))
-      const loose = q.distractors.map((text) => ({ id: newId(), item_body: text }))
+      const loose = q.distractors.map((text) => ({ id: newId(), item_body: escapeHtml(text) }))
       const allItems = [...categories.flatMap((c) => c.items), ...loose]
       entry.interaction_type_slug = 'categorization'
       entry.interaction_data = {

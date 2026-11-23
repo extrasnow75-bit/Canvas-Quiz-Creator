@@ -5,6 +5,8 @@
  * API with the key in a header (never in the URL, where it would end up in logs).
  */
 import { getGeminiApiKey } from './credentials'
+import { SUPPORT_CONTACT } from './googleMessages'
+import { ASK_SUPPORT, supportDetails } from './userMessage'
 import { fetchWithRetry, RequestTimeoutError } from './httpRetry'
 
 /**
@@ -27,10 +29,15 @@ const SCHEMA = {
 }
 
 function failure(status: number, detail: string): Error {
-  if (status === 400 && /api key/i.test(detail)) return new Error('Gemini did not accept the saved API key. Check it in Initial setup.')
-  if (status === 401 || status === 403) return new Error('Gemini did not accept the saved API key. Check it in Initial setup.')
-  if (status === 429) return new Error('Gemini is busy or the key has reached its limit. Wait a minute, then try again.')
-  return new Error(`Gemini could not answer (${status}). Please try again.`)
+  const tail = supportDetails(`Gemini ${status}. ${detail}`)
+  if ((status === 400 && /api key/i.test(detail)) || status === 401 || status === 403)
+    return new Error(`Gemini did not accept the saved API key. Open Initial setup, remove the Gemini key, and paste it again, or make a new key.${tail}`)
+  if (status === 429 && /quota|billing|exceeded/i.test(detail))
+    return new Error(`The Gemini key has used up its allowance for now. Wait until tomorrow, or ask whoever manages the key to raise its limit. The automatic fixes still work without Gemini.${tail}`)
+  if (status === 429) return new Error('Gemini is busy right now. Wait a minute, then try again.')
+  if (status === 404) return new Error(`This copy of the app asks for a Gemini model that is no longer available. Contact ${SUPPORT_CONTACT} to update the app.${tail}`)
+  if (status >= 500) return new Error(`Gemini is having a problem right now. Wait a few minutes, then try again. The automatic fixes still work without Gemini.${tail}`)
+  return new Error(`Gemini could not answer. Please try again. ${ASK_SUPPORT}${tail}`)
 }
 
 /** Ask Gemini for {lines, notes}. Throws a sentence fit to show. */
@@ -53,8 +60,9 @@ export async function askForLines(prompt: string, signal?: AbortSignal): Promise
       { idempotent: true, timeoutMs: 120_000, signal },
     )
   } catch (e) {
-    if (e instanceof RequestTimeoutError) throw new Error('Gemini did not answer in time. Please try again.')
-    throw new Error(`Could not reach Gemini: ${e instanceof Error ? e.message : String(e)}`)
+    if (e instanceof RequestTimeoutError) throw new Error('Gemini did not answer in time. Wait a minute, then try again.')
+    if (signal?.aborted) throw new Error('Stopped. Nothing was written to the Doc.')
+    throw new Error(`The app could not reach Gemini. Check your internet connection, then try again.${supportDetails(e instanceof Error ? e.message : String(e))}`)
   }
   if (!response.ok) {
     const detail = await response.text().catch(() => '')
@@ -69,7 +77,7 @@ export async function askForLines(prompt: string, signal?: AbortSignal): Promise
     if (!Array.isArray(parsed.lines)) throw new Error('no lines')
     return { lines: parsed.lines.map((l) => String(l ?? '')), notes: typeof parsed.notes === 'string' ? parsed.notes : '' }
   } catch {
-    throw new Error('Gemini’s answer could not be read. Please try again.')
+    throw new Error('Gemini sent back an answer the app could not read, so nothing was written. Please try again; if it keeps happening, fix the remaining problems by hand in the Doc.')
   }
 }
 
@@ -84,8 +92,8 @@ export async function validateGeminiKey(key: string): Promise<{ ok: boolean; mes
     if (response.ok) return { ok: true }
     if (response.status === 400 || response.status === 401 || response.status === 403)
       return { ok: false, message: 'Gemini did not accept that key. Check that you copied all of it.' }
-    return { ok: false, message: `Gemini could not check the key just now (${response.status}).` }
+    return { ok: false, message: `Gemini could not check the key just now. Wait a minute, then save it again.${supportDetails(`Gemini ${response.status}`)}` }
   } catch {
-    return { ok: false, message: 'Could not reach Gemini to check the key. Check your internet connection.' }
+    return { ok: false, message: 'The app could not reach Gemini to check the key. Check your internet connection, then save it again.' }
   }
 }
