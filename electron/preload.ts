@@ -75,9 +75,9 @@ contextBridge.exposeInMainWorld('api', {
   },
   quiz: {
     readDoc: (args: { fileId: string; tabId?: string; refresh?: boolean; level?: number | null }) => invoke('quiz:readDoc', args),
-    reformat: (args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string; level?: number | null; defaultPoints?: number | null }) => invoke('quiz:reformat', args),
+    reformat: (args: { fileId: string; tabId?: string; useAi?: boolean; replaceGemini?: boolean; level?: number | null; defaultPoints?: number | null }) => invoke('quiz:reformat', args),
     proposeRevision: (args: { fileId: string; tabId: string; instruction: string }) => invoke('quiz:proposeRevision', args),
-    applyRevision: (args: { proposalId: string }) => invoke('quiz:applyRevision', args),
+    applyRevision: (args: { proposalId: string; replaceGemini?: boolean }) => invoke('quiz:applyRevision', args),
     discardRevision: () => invoke('quiz:discardRevision'),
   },
 })

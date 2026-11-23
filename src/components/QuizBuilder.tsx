@@ -35,10 +35,22 @@ interface Plan {
   checked: boolean
 }
 
-const isReformatted = (doc: Loaded) => {
-  const tab = doc.tabs.find((t) => t.id === doc.tabId)
-  return /^Reformatted questions/i.test(tab?.title ?? '') || /Reformatted questions$/i.test(doc.name)
+/** Which of the app's tabs this is: its own fixes, Gemini's, or neither (the faculty member's). */
+function tabKind(doc: Loaded): 'rules' | 'gemini' | 'original' {
+  const title = doc.tabs.find((t) => t.id === doc.tabId)?.title ?? ''
+  if (/^Revised by Gemini/i.test(title) || /Revised by Gemini$/i.test(doc.name)) return 'gemini'
+  if (/^Reformatted questions/i.test(title) || /Reformatted questions$/i.test(doc.name)) return 'rules'
+  return 'original'
 }
+
+/** Questions the app or Gemini wrote: each quiz needs a person's check before Canvas. */
+const isReformatted = (doc: Loaded) => tabKind(doc) !== 'original'
+
+const TAB_BADGE = {
+  original: { label: 'Original questions', style: 'bg-gray-100 text-gray-800' },
+  rules: { label: 'Reformatted, no AI', style: 'bg-amber-100 text-amber-900' },
+  gemini: { label: 'Revised by Gemini', style: 'bg-purple-100 text-purple-900' },
+} as const
 
 const errorsIn = (issues: Issue[]) => issues.filter((i) => i.severity === 'error').length
 const engineErrors = (q: DocQuiz, e: QuizEngine) => errorsIn(engineIssues(q.result.questions, e))
@@ -181,24 +193,36 @@ export function QuizBuilder({ hasGemini, site, onSiteChange, onTokenResult }: Pr
 
   // ── Fixing ───────────────────────────────────────────────────────────────────
 
-  const runReformat = async (useAi: boolean) => {
+  const [geminiConfirm, setGeminiConfirm] = useState<string | null>(null)
+
+  const runReformat = async (useAi: boolean, replaceGemini = false) => {
     if (!doc) return
+    setGeminiConfirm(null)
     setReformatBusy(useAi ? 'gemini' : 'rules')
     setReformatError(null)
     setBlocked(false)
     try {
-      const signedOffTab = isReformatted(doc)
       const dp = Number(defaultPoints)
       const points = totals.missingPoints > 0 && defaultPoints.trim() !== '' && Number.isFinite(dp) && dp >= 0 ? dp : null
-      const res = await window.api.quiz.reformat(
-        useAi && signedOffTab
-          ? { fileId: doc.fileId, tabId: sourceTabId ?? doc.tabId ?? undefined, useAi: true, replaceTabId: doc.tabId ?? undefined, level: doc.level, defaultPoints: points }
-          : { fileId: doc.fileId, tabId: doc.tabId ?? undefined, useAi, level: doc.level, defaultPoints: points },
-      )
-      if (!res.ok) return setReformatError(res.message)
+      // Gemini works from the faculty member's original where the app knows it, else from the
+      // no-AI tab: never from its own earlier output.
+      const rulesTab = doc.tabs.find((t) => /^Reformatted questions/i.test(t.title))?.id
+      const geminiSource = sourceTabId ?? (tabKind(doc) === 'gemini' ? rulesTab : doc.tabId) ?? doc.tabId
+      const res = await window.api.quiz.reformat({
+        fileId: doc.fileId,
+        tabId: (useAi ? geminiSource : doc.tabId) ?? undefined,
+        useAi,
+        replaceGemini,
+        level: doc.level,
+        defaultPoints: points,
+      })
+      if (!res.ok) {
+        if (res.needsConfirm) return setGeminiConfirm(res.message)
+        return setReformatError(res.message)
+      }
       setReformat(res)
       if (!res.nothingChanged) {
-        setSourceTabId(res.target.sourceTabId)
+        if (!useAi) setSourceTabId(res.target.sourceTabId)
         await read(res.target.fileId, res.target.name, { tabId: res.target.tabId ?? undefined, refresh: true, level: doc.level })
         // New questions from the app: every quiz needs a person's check again.
         setPlans((ps) => ps.map((p) => ({ ...p, checked: false })))
@@ -336,7 +360,10 @@ export function QuizBuilder({ hasGemini, site, onSiteChange, onTokenResult }: Pr
       >
         {doc ? (
           <div className="space-y-2.5">
-            <p className="m-0 text-[13.5px]">
+            <p className="m-0 text-[13.5px] flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className={`text-[10.5px] font-black tracking-wide px-2 py-0.5 rounded-full ${TAB_BADGE[tabKind(doc)].style}`}>
+                {TAB_BADGE[tabKind(doc)].label.toUpperCase()}
+              </span>
               <b>{doc.name}</b>
               <span className="text-gray-600"> · {plural(quizzes.length, 'quiz', 'quizzes')} · {plural(quizzes.reduce((n, q) => n + Math.max(q.result.questions.length, q.fixPreview.questionsAfterFix), 0), 'question')}</span>
             </p>
@@ -575,6 +602,21 @@ export function QuizBuilder({ hasGemini, site, onSiteChange, onTokenResult }: Pr
               )}
             </div>
 
+            {geminiConfirm && (
+              <div role="alertdialog" aria-labelledby={`${id}-gc`} className="mt-3 rounded-xl border-2 border-purple-300 bg-white p-3">
+                <p id={`${id}-gc`} className="m-0 text-[12.5px] text-gray-800">{geminiConfirm}</p>
+                <div className="flex flex-wrap gap-2 mt-2.5">
+                  <button onClick={() => void runReformat(true, true)}
+                    className="px-3.5 py-2 rounded-lg bg-brand hover:bg-brand-dark text-white text-xs font-black focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+                    Replace the Revised by Gemini tab
+                  </button>
+                  <button onClick={() => setGeminiConfirm(null)}
+                    className="px-3.5 py-2 rounded-lg border border-gray-400 bg-white text-gray-800 text-xs font-bold hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                    Keep it
+                  </button>
+                </div>
+              </div>
+            )}
             {reformatError && (
               <p className="mt-2.5 flex items-start gap-2 rounded-lg bg-red-50 border border-red-200 p-2.5 text-[12.5px] text-red-800">
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
@@ -586,9 +628,9 @@ export function QuizBuilder({ hasGemini, site, onSiteChange, onTokenResult }: Pr
           {reformat && <ReformatReview result={reformat} onDismiss={() => setReformat(null)} />}
           {signOff && doc.tabId && (
             <RevisionPanel fileId={doc.fileId} tabId={doc.tabId} hasGemini={hasGemini}
-              onApplied={async (stamp) => {
+              onApplied={async (stamp, target) => {
                 setReformat(null)
-                await read(doc.fileId, doc.name, { tabId: doc.tabId ?? undefined, refresh: true, level: doc.level })
+                await read(target.fileId, target.name, { tabId: target.tabId ?? undefined, refresh: true, level: doc.level })
                 setPlans((ps) => ps.map((p) => ({ ...p, checked: false })))
                 setNotice(`Gemini’s change was written to the tab at ${stamp}. Check the quizzes again, then tick Checked for each.`)
               }} />

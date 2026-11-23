@@ -84,3 +84,24 @@ describe('helpers', () => {
     expect(clearTabRequest('t.1', 2)).toBeNull()
   })
 })
+
+describe('the Revised by Gemini tab', () => {
+  const r = reformatQuiz(['Points: 1', '1) Pick', '*a) x', 'b) y'].map((text) => ({ text, bold: false, bullet: false, heading: false })))
+  const lines = r.lines.map((l) => ({ ...l, changed: l.text === '*a) x' }))
+  const requests = fillTabRequests('t.gem', lines, { check: [], needsPerson: [] }, when, 'gemini')
+  const out = apply(requests)
+
+  it('says it is Gemini’s, with the time stamp, and how it is highlighted', () => {
+    const paras = out.text.split('\n')
+    expect(paras[0]).toBe(`Revised by Gemini — ${stampFor(when)}`)
+    expect(paras[1]).toMatch(/^Lines Gemini changed from the Reformatted questions tab are highlighted in purple/)
+    expect(isAppHeaderLine(paras[0], true)).toBe(true)
+    expect(isAppHeaderLine(paras[1], true)).toBe(true)
+  })
+
+  it('highlights Gemini’s lines in purple, not yellow', () => {
+    const hl = (requests as any[]).filter((q) => q.updateTextStyle?.textStyle?.backgroundColor)
+    expect(hl).toHaveLength(1)
+    expect(hl[0].updateTextStyle.textStyle.backgroundColor.color.rgbColor).toEqual({ red: 0.91, green: 0.86, blue: 1 })
+  })
+})

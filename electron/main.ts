@@ -22,7 +22,8 @@ import {
   type ListFilesArgs,
 } from './ipc/googleDrive'
 import { reformatDocument, problemsOf, type DocumentFix } from './ipc/docReformat'
-import { addTabRequest, clearTabRequest, fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle } from './ipc/docsWrite'
+import { addTabRequest, clearTabRequest, fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle, GEMINI_TAB_TITLE, type HeaderNotes } from './ipc/docsWrite'
+import type { FixedLine as WrittenLine } from './ipc/reformat'
 import type { FixedLine, ReformatResult as RuleResult } from './ipc/reformat'
 import { docToLines, listTabs, type DocsDocument } from './ipc/docLines'
 import { parseQuiz } from './ipc/quizFormat'
@@ -425,6 +426,65 @@ function previewFixes(title: string | null, current: ReturnType<typeof parseQuiz
 
 const SCOPE_PROBLEM = /does not have permission to edit Google Docs/
 
+/** A tab anywhere in the Doc (child tabs too), by id or by a test on its title. */
+function findTab(doc: DocsDocument, test: (t: any) => boolean): any {
+  const walk = (list: any[] | undefined): any => {
+    for (const t of list ?? []) {
+      if (test(t)) return t
+      const inner = walk(t.childTabs)
+      if (inner) return inner
+    }
+    return null
+  }
+  return walk((doc as any).tabs)
+}
+
+const isGeminiTab = (t: any) => (t?.tabProperties?.title ?? '').trim().toLowerCase() === GEMINI_TAB_TITLE.toLowerCase()
+
+const REPLACE_GEMINI_MESSAGE =
+  `The Doc already has a “${GEMINI_TAB_TITLE}” tab. Replacing it writes Gemini’s new version there, with a new time stamp. Anything changed by hand in that tab will be lost; the other tabs are not touched.`
+
+/**
+ * Write Gemini's version to the "Revised by Gemini" tab: replace the one there (the caller has
+ * the person's go-ahead), or add it. A Doc the person cannot edit gets a new Doc instead.
+ */
+async function writeGeminiTab(
+  fileId: string,
+  doc: DocsDocument,
+  lines: WrittenLine[],
+  notes: HeaderNotes,
+  when: Date,
+): Promise<{ target: { fileId: string; name: string; tabId: string | null; tabTitle: string; inNewDoc: boolean; why?: string }; revisionId: string | null }> {
+  const docTitle = doc.title ?? 'Quiz questions'
+  const existing = findTab(doc, isGeminiTab)
+  if (existing) {
+    const id = existing.tabProperties.tabId as string
+    const content: Array<{ endIndex?: number }> = existing.documentTab?.body?.content ?? []
+    const clear = clearTabRequest(id, content[content.length - 1]?.endIndex ?? 1)
+    const { revisionId } = await docsBatchUpdate(fileId, [...(clear ? [clear] : []), ...fillTabRequests(id, lines, notes, when, 'gemini')])
+    return { target: { fileId, name: docTitle, tabId: id, tabTitle: GEMINI_TAB_TITLE, inNewDoc: false }, revisionId }
+  }
+  let why = 'You can only view the original Doc, not edit it, so Gemini’s version is in a new Doc in your My Drive instead.'
+  if (await canEditFile(fileId)) {
+    try {
+      const added = await docsBatchUpdate(fileId, [addTabRequest(GEMINI_TAB_TITLE)])
+      const id: string | undefined = added.replies[0]?.addDocumentTab?.tabProperties?.tabId
+      if (!id) throw new Error('Google added the tab but did not say which it was.')
+      const { revisionId } = await docsBatchUpdate(fileId, fillTabRequests(id, lines, notes, when, 'gemini'))
+      return { target: { fileId, name: docTitle, tabId: id, tabTitle: GEMINI_TAB_TITLE, inNewDoc: false }, revisionId }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      if (SCOPE_PROBLEM.test(message)) throw e
+      why = `Google would not add a tab to the Doc (${message}), so Gemini’s version is in a new Doc instead.`
+    }
+  }
+  const name = `${docTitle} – ${GEMINI_TAB_TITLE}`
+  const created = await createGoogleDoc(name)
+  const { revisionId } = await docsBatchUpdate(created.fileId, fillTabRequests(undefined, lines, notes, when, 'gemini'))
+  const fresh = (await getGoogleDocStructure(created.fileId)) as DocsDocument
+  return { target: { fileId: created.fileId, name, tabId: listTabs(fresh)[0]?.id ?? null, tabTitle: name, inNewDoc: true, why }, revisionId }
+}
+
 /**
  * Reformat the questions in one tab and write them to a new "Reformatted questions" tab of the
  * same Doc, with a time stamp at the top and every changed line highlighted. The original tab is
@@ -433,9 +493,13 @@ const SCOPE_PROBLEM = /does not have permission to edit Google Docs/
  * When the person cannot edit the Doc (shared view-only), or Google will not add a tab, the
  * questions go into a new Doc in their My Drive instead, and the result says so and why.
  */
-ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string; level?: number | null; defaultPoints?: number | null }) => {
+ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: string; useAi?: boolean; replaceGemini?: boolean; level?: number | null; defaultPoints?: number | null }) => {
   try {
     const doc = (await getGoogleDocStructure(args.fileId)) as DocsDocument
+    // Ask before Gemini is called, not after: a Gemini tab may hold someone's hand edits.
+    if (args.useAi && findTab(doc, isGeminiTab) && !args.replaceGemini) {
+      return { ok: false as const, needsConfirm: true as const, message: REPLACE_GEMINI_MESSAGE }
+    }
     const tabs = listTabs(doc)
     const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : tabs[0]?.id
     const content = docToLines(doc, tabId).filter((l) => !isAppHeaderLine(l.text, l.heading))
@@ -481,7 +545,11 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
     const summary = { changes: fix.changes, problems, questionCount, quizCount: fix.quizzes.length, ai }
     const r = { lines: fix.lines }
 
-    if (!r.lines.some((l) => l.changed) && !args.replaceTabId) return { ok: true as const, nothingChanged: true as const, ...summary }
+    // Gemini's version, when there is one, is compared with the app's own fixes, not the original:
+    // its tab highlights only what Gemini changed.
+    const geminiUsed = !!ai?.used
+    if (args.useAi && !geminiUsed) return { ok: true as const, nothingChanged: true as const, ...summary }
+    if (!args.useAi && !r.lines.some((l) => l.changed)) return { ok: true as const, nothingChanged: true as const, ...summary }
 
     const when = new Date()
     const notes = { check, needsPerson: problems }
@@ -490,23 +558,12 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
     let revisionId: string | null = null
 
     let why: string | undefined
-    if (args.replaceTabId) {
-      // Gemini's pass over a tab the app already wrote: replace that tab, with a new time stamp.
-      const replaceId = args.replaceTabId
-      const findTab = (list: any[] | undefined): any => {
-        for (const t of list ?? []) {
-          if (t.tabProperties?.tabId === replaceId) return t
-          const inner = findTab(t.childTabs)
-          if (inner) return inner
-        }
-        return null
-      }
-      const tab = findTab((doc as any).tabs)
-      if (!tab) throw new Error('The reformatted tab is no longer in the Doc. Run the automatic fixes again.')
-      const content: Array<{ endIndex?: number }> = tab.documentTab?.body?.content ?? []
-      const clear = clearTabRequest(replaceId, content[content.length - 1]?.endIndex ?? 1)
-      revisionId = (await docsBatchUpdate(args.fileId, [...(clear ? [clear] : []), ...fillTabRequests(replaceId, r.lines, notes, when)])).revisionId
-      target = { fileId: args.fileId, name: docTitle, tabId: replaceId, tabTitle: tab.tabProperties?.title ?? 'Reformatted questions', inNewDoc: false }
+    if (geminiUsed) {
+      const rulesTexts = new Set(reformatDocument(content, args.level, undefined, options).lines.map((l) => l.text.trim()))
+      const lines = fix.lines.map((l) => ({ ...l, changed: !l.heading && l.text.trim() !== '' && !rulesTexts.has(l.text.trim()) }))
+      const written = await writeGeminiTab(args.fileId, doc, lines, notes, when)
+      target = written.target
+      revisionId = written.revisionId
     } else if (await canEditFile(args.fileId)) {
       try {
         const title = uniqueTabTitle(tabs.map((t) => t.title))
@@ -581,31 +638,28 @@ ipcMain.handle('quiz:proposeRevision', async (_e, args: { fileId: string; tabId:
   }
 })
 
-/** Write an accepted revision over the reformatted tab, with a new time stamp at the top. */
-ipcMain.handle('quiz:applyRevision', async (_e, args: { proposalId: string }) => {
+/**
+ * Write an accepted revision to the "Revised by Gemini" tab, with a new time stamp at the top. A
+ * revision of the Gemini tab replaces it; a revision of any other tab goes to the Gemini tab too,
+ * never over the app's own fixes or the original, and replaces an existing Gemini tab only with
+ * the person's go-ahead.
+ */
+ipcMain.handle('quiz:applyRevision', async (_e, args: { proposalId: string; replaceGemini?: boolean }) => {
   const p = pendingRevision
   if (!p || p.id !== args.proposalId) return { ok: false as const, message: 'That revision is no longer available. Ask for it again.' }
   try {
-    const doc = (await getGoogleDocStructure(p.fileId)) as DocsDocument & { tabs?: Array<any> }
-    const find = (tabs: any[] | undefined): any => {
-      for (const t of tabs ?? []) {
-        if (t.tabProperties?.tabId === p.tabId) return t
-        const inner = find(t.childTabs)
-        if (inner) return inner
-      }
-      return null
+    const doc = (await getGoogleDocStructure(p.fileId)) as DocsDocument
+    const existing = findTab(doc, isGeminiTab)
+    const revisingGeminiTab = existing && existing.tabProperties?.tabId === p.tabId
+    if (existing && !revisingGeminiTab && !args.replaceGemini) {
+      return { ok: false as const, needsConfirm: true as const, message: REPLACE_GEMINI_MESSAGE }
     }
-    const tab = find(doc.tabs)
-    const content: Array<{ endIndex?: number }> = tab?.documentTab?.body?.content ?? []
-    const end = content[content.length - 1]?.endIndex ?? 1
     const when = new Date()
-    const clear = clearTabRequest(p.tabId, end)
-    const requests = [...(clear ? [clear] : []), ...fillTabRequests(p.tabId, p.lines, { check: p.check, needsPerson: p.problems }, when)]
-    const { revisionId } = await docsBatchUpdate(p.fileId, requests)
-    if (revisionId) appWrites.set(p.fileId, revisionId)
+    const { target, revisionId } = await writeGeminiTab(p.fileId, doc, p.lines, { check: p.check, needsPerson: p.problems }, when)
+    if (revisionId) appWrites.set(target.fileId, revisionId)
     pendingRevision = null
     lastDoc = null
-    return { ok: true as const, stamp: stampFor(when), url: tabUrl(p.fileId, p.tabId) }
+    return { ok: true as const, stamp: stampFor(when), url: tabUrl(target.fileId, target.tabId), fileId: target.fileId, name: target.name, tabId: target.tabId }
   } catch (e) {
     return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
   }

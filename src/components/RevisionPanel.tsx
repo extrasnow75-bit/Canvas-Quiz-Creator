@@ -17,13 +17,14 @@ export function RevisionPanel(props: {
   fileId: string
   tabId: string
   hasGemini: boolean
-  /** Called after an accepted revision is written, so the screen can read the tab again. */
-  onApplied(stamp: string): void
+  /** Called after an accepted revision is written, with the tab it went to (Revised by Gemini). */
+  onApplied(stamp: string, target: { fileId: string; name: string; tabId: string | null }): void
 }) {
   const [instruction, setInstruction] = useState('')
   const [busy, setBusy] = useState<'asking' | 'writing' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [proposal, setProposal] = useState<Proposal | null>(null)
+  const [confirm, setConfirm] = useState<string | null>(null)
 
   const ask = async () => {
     setBusy('asking')
@@ -40,19 +41,21 @@ export function RevisionPanel(props: {
     }
   }
 
-  const apply = async () => {
+  const apply = async (replaceGemini = false) => {
     if (!proposal) return
     setBusy('writing')
     setError(null)
+    setConfirm(null)
     try {
-      const res = await window.api.quiz.applyRevision({ proposalId: proposal.proposalId })
+      const res = await window.api.quiz.applyRevision({ proposalId: proposal.proposalId, replaceGemini })
       if (!res.ok) {
-        setError(res.message)
+        if (res.needsConfirm) setConfirm(res.message)
+        else setError(res.message)
         return
       }
       setProposal(null)
       setInstruction('')
-      props.onApplied(res.stamp)
+      props.onApplied(res.stamp, { fileId: res.fileId, name: res.name, tabId: res.tabId })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'The revision could not be written.')
     } finally {
@@ -156,7 +159,7 @@ export function RevisionPanel(props: {
           )}
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => void apply()}
+              onClick={() => void apply(false)}
               disabled={busy !== null}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand hover:bg-brand-dark text-white text-xs font-black disabled:bg-gray-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
             >
@@ -171,8 +174,22 @@ export function RevisionPanel(props: {
               <X className="w-3.5 h-3.5" aria-hidden="true" /> Discard
             </button>
           </div>
+          {confirm && (
+            <div role="alertdialog" aria-label="Replace the Revised by Gemini tab?" className="rounded-lg border border-purple-300 bg-purple-50 p-2.5">
+              <p className="m-0 text-[12.5px] text-gray-800">{confirm}</p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <button onClick={() => void apply(true)} className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-black focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+                  Replace it
+                </button>
+                <button onClick={() => setConfirm(null)} className="px-3 py-1.5 rounded-lg border border-gray-400 bg-white text-xs font-bold text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                  Keep it
+                </button>
+              </div>
+            </div>
+          )}
           <p className="text-xs text-gray-600 m-0">
-            Using it rewrites the reformatted tab, with a new time stamp at the top. You will need to tick Ready for Canvas again.
+            Using it writes to the <b>Revised by Gemini</b> tab, with a new time stamp at the top. The original and the no-AI Reformatted
+            questions tab are not changed. You will need to tick Checked again.
           </p>
         </div>
       )}

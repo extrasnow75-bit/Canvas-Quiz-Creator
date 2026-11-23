@@ -7,8 +7,12 @@
 import { getGeminiApiKey } from './credentials'
 import { fetchWithRetry, RequestTimeoutError } from './httpRetry'
 
-/** Same model Canvas Rubric Creator uses for text work. */
-export const GEMINI_MODEL = 'gemini-3.5-flash-lite'
+/**
+ * The stronger of the two models Canvas Rubric Creator uses (it keeps this one for its hardest
+ * job). Gemini runs here only on what the app's rules could not fix, so it is called rarely, and a
+ * weaker model fails the app's checks more often, which leaves the developer with nothing.
+ */
+export const GEMINI_MODEL = 'gemini-3.8-flash'
 const API = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 export const NO_GEMINI_KEY = 'No Gemini API key is saved. Add one in Initial setup to use Gemini.'

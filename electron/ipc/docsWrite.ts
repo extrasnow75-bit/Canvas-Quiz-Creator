@@ -18,11 +18,19 @@
 import type { FixedLine } from './reformat'
 
 export const TAB_BASE_TITLE = 'Reformatted questions'
+/** Gemini's work goes in a tab of its own, apart from the original and the app's own fixes. */
+export const GEMINI_TAB_TITLE = 'Revised by Gemini'
 
-/** Pale yellow: visible on white, and dark text on it stays well above 4.5:1. */
-const HIGHLIGHT = { color: { rgbColor: { red: 1, green: 0.95, blue: 0.6 } } }
+/** Which of the app's tabs is being written: its own fixes, or Gemini's. */
+export type TabKind = 'rules' | 'gemini'
 
-const HEADER_PREFIXES = [`${TAB_BASE_TITLE} —`, 'Lines the app changed', 'Check:', 'Still needs a person:']
+/** Pale yellow for the app's fixes, pale purple for Gemini's: dark text on either stays well above 4.5:1. */
+const HIGHLIGHT: Record<TabKind, object> = {
+  rules: { color: { rgbColor: { red: 1, green: 0.95, blue: 0.6 } } },
+  gemini: { color: { rgbColor: { red: 0.91, green: 0.86, blue: 1 } } },
+}
+
+const HEADER_PREFIXES = [`${TAB_BASE_TITLE} —`, `${GEMINI_TAB_TITLE} —`, 'Lines the app changed', 'Lines Gemini changed', 'Check:', 'Still needs a person:']
 
 /** A line of the app's own header, so a second reformat of the same tab does not copy it. */
 export function isAppHeaderLine(text: string, heading: boolean): boolean {
@@ -65,12 +73,15 @@ function styleFor(l: FixedLine): Style {
   return level === 0 ? 'TITLE' : (`HEADING_${Math.min(6, Math.max(1, level))}` as Style)
 }
 
-function paragraphs(lines: FixedLine[], notes: HeaderNotes, when: Date): Paragraph[] {
+function paragraphs(lines: FixedLine[], notes: HeaderNotes, when: Date, kind: TabKind): Paragraph[] {
   const header: Paragraph[] = [
     // Subtitle, not Heading 1: quiz titles are headings, and the app's own line must never look like one.
-    { text: `${TAB_BASE_TITLE} — ${stampFor(when)}`, style: 'SUBTITLE', highlight: false },
+    { text: `${kind === 'gemini' ? GEMINI_TAB_TITLE : TAB_BASE_TITLE} — ${stampFor(when)}`, style: 'SUBTITLE', highlight: false },
     {
-      text: 'Lines the app changed are highlighted. Compare them with the original questions, and fix anything wrong here, before creating the quiz. The original tab was not changed.',
+      text:
+        kind === 'gemini'
+          ? 'Lines Gemini changed from the Reformatted questions tab are highlighted in purple. Compare them with the original questions and the Reformatted questions tab, and fix anything wrong here, before creating the quiz. The other tabs were not changed.'
+          : 'Lines the app changed are highlighted. Compare them with the original questions, and fix anything wrong here, before creating the quiz. The original tab was not changed.',
       style: 'HEADING_6',
       highlight: false,
     },
@@ -90,8 +101,14 @@ function paragraphs(lines: FixedLine[], notes: HeaderNotes, when: Date): Paragra
  * Requests that fill an EMPTY tab (a new one, or one just cleared with `clearTabRequest`). Text
  * goes in with one insert; styles are applied afterwards by range.
  */
-export function fillTabRequests(tabId: string | undefined, lines: FixedLine[], notes: HeaderNotes, when: Date): object[] {
-  const paras = paragraphs(lines, notes, when)
+export function fillTabRequests(
+  tabId: string | undefined,
+  lines: FixedLine[],
+  notes: HeaderNotes,
+  when: Date,
+  kind: TabKind = 'rules',
+): object[] {
+  const paras = paragraphs(lines, notes, when, kind)
   // Text is never allowed to carry its own newlines into a paragraph: one line, one paragraph.
   const texts = paras.map((p) => p.text.replace(/[\r\n\v]+/g, ' '))
   const location = (index: number) => (tabId ? { index, tabId } : { index })
@@ -117,7 +134,7 @@ export function fillTabRequests(tabId: string | undefined, lines: FixedLine[], n
       updateParagraphStyle: { range: range(start, end + 1), paragraphStyle: { namedStyleType: p.style }, fields: 'namedStyleType' },
     })
     if (p.highlight && end > start) {
-      requests.push({ updateTextStyle: { range: range(start, end), textStyle: { backgroundColor: HIGHLIGHT }, fields: 'backgroundColor' } })
+      requests.push({ updateTextStyle: { range: range(start, end), textStyle: { backgroundColor: HIGHLIGHT[kind] }, fields: 'backgroundColor' } })
     }
     at = end + 1
   })

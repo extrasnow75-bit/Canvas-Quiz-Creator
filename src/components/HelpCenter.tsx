@@ -136,6 +136,14 @@ export function HelpCenter({ isOpen, onClose, returnFocusTo, appVersion }: Props
           </section>
 
           <section>
+            <h3 className="font-black text-sm text-gray-900 mb-1.5">AI model used</h3>
+            <p>
+              <b className="text-gray-900">gemini-3.8-flash</b>, only when you ask for it: laying out questions the app’s rules could not fix,
+              and changes you describe in plain English. Its work goes into a separate <b className="text-gray-900">Revised by Gemini</b> tab.
+            </p>
+          </section>
+
+          <section>
             <h3 className="font-black text-sm text-gray-900 mb-1.5">Version</h3>
             <p className="mb-2">Canvas Quiz Creator {appVersion || '—'}</p>
             <div className="flex items-center gap-3">

@@ -37,9 +37,11 @@ app changed is highlighted, so the faculty member can compare it with the origin
 1. **Rules first, no AI.** Other numbering and letter styles, misplaced asterisks, answer keys
    ("Answer: B" or a key at the end), bold or highlighted answers, choices typed on one line,
    points written into the question, and a missing `Type: MA`.
-2. **Gemini if needed,** when a Gemini key is saved and problems remain. Its answer is used only if
-   it adds no wording and invents no point values, and correct answers always come from the faculty
-   member's own marks, never from Gemini.
+2. **Gemini as the last resort,** only when asked, and only for quizzes the rules left with problems.
+   Its version goes into a third tab, **Revised by Gemini**, with Gemini's changes highlighted in
+   purple, so the original and the no-AI tab stay as they were. Its answer is used only if it adds no
+   wording and invents no point values, and correct answers always come from the faculty member's
+   own marks, never from Gemini. Plain-English changes requested from Gemini go to the same tab.
 3. **A person reviews.** The summary lists answer and point changes first. A quiz from a
    reformatted tab cannot be launched until someone ticks **Checked** for it.
 4. **Points for questions with none.** When questions have no points, step 3 says how many and

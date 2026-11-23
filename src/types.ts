@@ -117,7 +117,9 @@ export type ReformatResult =
       target: { fileId: string; name: string; tabId: string | null; tabTitle: string; inNewDoc: boolean; why?: string; url: string; sourceTabId: string | null }
       stamp: string
     })
-  | { ok: false; message: string }
+  /** A "Revised by Gemini" tab is already there: replacing it needs the person's go-ahead. */
+  | { ok: false; needsConfirm: true; message: string }
+  | { ok: false; needsConfirm?: undefined; message: string }
 
 export type CreateQuizResult = { ok: true; results: ProgressEvent[] } | { ok: false; message: string }
 
@@ -189,9 +191,13 @@ declare global {
       }
       quiz: {
         readDoc(args: { fileId: string; tabId?: string; refresh?: boolean; level?: number | null }): Promise<ReadDocResult>
-        reformat(args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string; level?: number | null; defaultPoints?: number | null }): Promise<ReformatResult>
+        reformat(args: { fileId: string; tabId?: string; useAi?: boolean; replaceGemini?: boolean; level?: number | null; defaultPoints?: number | null }): Promise<ReformatResult>
         proposeRevision(args: { fileId: string; tabId: string; instruction: string }): Promise<ProposeRevisionResult>
-        applyRevision(args: { proposalId: string }): Promise<{ ok: true; stamp: string; url: string } | { ok: false; message: string }>
+        applyRevision(args: { proposalId: string; replaceGemini?: boolean }): Promise<
+          | { ok: true; stamp: string; url: string; fileId: string; name: string; tabId: string | null }
+          | { ok: false; needsConfirm: true; message: string }
+          | { ok: false; needsConfirm?: undefined; message: string }
+        >
         discardRevision(): Promise<void>
       }
     }
