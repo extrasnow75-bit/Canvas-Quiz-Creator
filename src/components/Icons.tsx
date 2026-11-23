@@ -72,12 +72,29 @@ export function CheckFixIcon({ size = 20 }: { size?: number }) {
   )
 }
 
-export function CoursesIcon({ size = 20 }: { size?: number }) {
+/**
+ * The Canvas mark, in white for the red tile: the same drawing Canvas Extractor Tools uses on its
+ * course content card (from Canvas Rubric Creator's CanvasLogo).
+ */
+export function CoursesIcon({ size = 25 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" {...line} aria-hidden="true">
-      <path d="M21.42 10.92a1 1 0 0 0-.02-1.84L12.83 5.2a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.83l8.57 3.91a2 2 0 0 0 1.66 0z" />
-      <path d="M22 10v6" />
-      <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5" />
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="#fff" aria-hidden="true" focusable="false">
+      <path d="M 38 14 A 12 12 0 0 0 62 14 Z" />
+      <path d="M 38 14 A 12 12 0 0 0 62 14 Z" transform="rotate(45,50,50)" />
+      <path d="M 38 14 A 12 12 0 0 0 62 14 Z" transform="rotate(90,50,50)" />
+      <path d="M 38 14 A 12 12 0 0 0 62 14 Z" transform="rotate(135,50,50)" />
+      <path d="M 38 14 A 12 12 0 0 0 62 14 Z" transform="rotate(180,50,50)" />
+      <path d="M 38 14 A 12 12 0 0 0 62 14 Z" transform="rotate(225,50,50)" />
+      <path d="M 38 14 A 12 12 0 0 0 62 14 Z" transform="rotate(270,50,50)" />
+      <path d="M 38 14 A 12 12 0 0 0 62 14 Z" transform="rotate(315,50,50)" />
+      <circle cx="50" cy="28" r="5" transform="rotate(22.5,50,50)" />
+      <circle cx="50" cy="28" r="5" transform="rotate(67.5,50,50)" />
+      <circle cx="50" cy="28" r="5" transform="rotate(112.5,50,50)" />
+      <circle cx="50" cy="28" r="5" transform="rotate(157.5,50,50)" />
+      <circle cx="50" cy="28" r="5" transform="rotate(202.5,50,50)" />
+      <circle cx="50" cy="28" r="5" transform="rotate(247.5,50,50)" />
+      <circle cx="50" cy="28" r="5" transform="rotate(292.5,50,50)" />
+      <circle cx="50" cy="28" r="5" transform="rotate(337.5,50,50)" />
     </svg>
   )
 }
