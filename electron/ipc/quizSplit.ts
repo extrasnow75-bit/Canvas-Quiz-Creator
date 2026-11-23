@@ -51,7 +51,57 @@ function levelsAbove(lines: DocLine[]): Map<number, number> {
   return tally
 }
 
-export function splitDocument(lines: DocLine[], chosenLevel?: number | null): SplitResult {
+/**
+ * A section of instructions and blank templates, as the eCampus templates have at the bottom:
+ * "Instructions and Question Type Templates", "Multiple Choice Template:". Its "#) Question"
+ * examples are not a quiz. The heading's whole section is kept as other text.
+ */
+/** A heading that names a place in the course rather than a quiz: "Module 3", "[Module #]", "Week 2". */
+const PLACE_LABEL = /^\[?\s*(?:module|week|unit|chapter|lesson|part|session|topic)\b[\s#\d\]:.-]*$/i
+
+const TEMPLATE_HEADING = /\btemplates?\b|^instructions\b/i
+
+function setAsideTemplates(lines: DocLine[]): { content: DocLine[]; reference: Map<number, DocLine[]> } {
+  // Lines inside a template section are pulled out, remembering where they were, so the reformatted
+  // tab can write them back in the same place.
+  const reference = new Map<number, DocLine[]>()
+  const content: DocLine[] = []
+  let inside: number | null = null // level of the template heading we are inside
+  for (const l of lines) {
+    const level = isHeading(l) ? l.headingLevel! : null
+    if (inside !== null && level !== null && level <= inside && !TEMPLATE_HEADING.test(l.text)) inside = null
+    if (inside === null && level !== null && TEMPLATE_HEADING.test(l.text)) inside = level
+    if (inside !== null) {
+      const at = content.length
+      reference.set(at, [...(reference.get(at) ?? []), l])
+    } else content.push(l)
+  }
+  return { content, reference }
+}
+
+export function splitDocument(allLines: DocLine[], chosenLevel?: number | null): SplitResult {
+  const { content: lines, reference } = setAsideTemplates(allLines)
+  const result = splitContent(lines, chosenLevel)
+  if (reference.size === 0) return result
+  // Put the set-aside template sections back, as other text, where they came from.
+  const segments: Segment[] = []
+  let index = 0
+  const flush = (upTo: number) => {
+    for (const [at, ls] of reference) if (at <= upTo && ls.length) {
+      segments.push({ kind: 'other', lines: ls })
+      reference.set(at, [])
+    }
+  }
+  for (const seg of result.segments) {
+    flush(index)
+    segments.push(seg)
+    index += seg.kind === 'other' ? seg.lines.length : seg.section.lines.length + (seg.section.heading ? 1 : 0)
+  }
+  flush(Number.MAX_SAFE_INTEGER)
+  return { ...result, segments }
+}
+
+function splitContent(lines: DocLine[], chosenLevel?: number | null): SplitResult {
   const tally = levelsAbove(lines)
   const levels = [...tally.keys()].sort((a, b) => a - b)
   // Most questions sit under it; on a tie, the deeper level (closer to the questions).
@@ -59,7 +109,9 @@ export function splitDocument(lines: DocLine[], chosenLevel?: number | null): Sp
   const level = chosenLevel && levels.includes(chosenLevel) ? chosenLevel : guess
 
   if (level === null) {
-    return { level: null, levels, segments: [{ kind: 'quiz', section: { title: null, heading: null, lines } }] }
+    // One quiz. A Title-style line ("COURSE 101 Module 3 Quiz") names it.
+    const titleLine = lines.find((l) => l.heading && l.headingLevel === 0 && l.text.trim())
+    return { level: null, levels, segments: [{ kind: 'quiz', section: { title: titleLine?.text.trim() ?? null, heading: null, lines } }] }
   }
 
   const segments: Segment[] = []
@@ -83,6 +135,18 @@ export function splitDocument(lines: DocLine[], chosenLevel?: number | null): Sp
     }
     if (current) current.lines.push(l)
     else other(l)
+  }
+
+  // When the heading over the questions only says where the quiz sits ("Module 3", "[Module #]",
+  // "Week 2"), the heading directly above it is the quiz's title: the Extraction Template puts the
+  // quiz title in Heading 1 and the module in Heading 2. Other Docs put the module in Heading 1 and
+  // the quiz title in Heading 2, and keep their own titles.
+  for (let i = 1; i < segments.length; i++) {
+    const seg = segments[i]
+    const before = segments[i - 1]
+    if (seg.kind !== 'quiz' || before.kind !== 'other' || !PLACE_LABEL.test(seg.section.title ?? '')) continue
+    const above = before.lines[before.lines.length - 1]
+    if (above && isHeading(above) && above.headingLevel! < level) seg.section.title = above.text.trim()
   }
 
   // A heading with no questions under it (an "Instructions" section) is not a quiz.

@@ -1,5 +1,5 @@
 import { useState, type RefObject } from 'react'
-import { X } from 'lucide-react'
+import { ExternalLink, X } from 'lucide-react'
 import type { ManualCheckResult } from '../types'
 import { useDialogFocus } from '../hooks/useDialogFocus'
 
@@ -43,7 +43,34 @@ const TYPES: Array<[string, string]> = [
   ['Text only', 'Text to display: … (Classic)'],
 ]
 
-/** A drawer from the right: the format, where to get help, and the version. */
+/**
+ * eCampus documents for faculty and developers. Opened in the browser; docs.google.com is on the
+ * app's link allowlist (externalLinks.ts).
+ */
+const REFERENCE_DOCS: Array<{ title: string; about: string; url: string }> = [
+  {
+    title: 'Quiz Questions Extraction Template',
+    about: 'Several quizzes in one Doc: a Heading 1 quiz title and a Heading 2 module over each set of questions.',
+    url: 'https://docs.google.com/document/d/1zm9yRGtg4u9C3ddOVX7iNGrGp8gxDCrj9rbFY4GUtDM/edit',
+  },
+  {
+    title: 'Classic Quiz Template',
+    about: 'One quiz per Doc, with the instructions and a template for each question type at the bottom.',
+    url: 'https://docs.google.com/document/d/1OB6jykUSn-TuVh-o2P-xRKD27brqB4phHaDRURj_0oc/edit',
+  },
+  {
+    title: 'Convert Bullet-Style Numbering to Plain Text',
+    about: 'Turning Word or Docs automatic numbering into typed numbers and letters.',
+    url: 'https://docs.google.com/document/d/1zhUp86mTxEFbqp9bVw8nJN3hpsA7NNwlvy8BFRKAQtM/edit',
+  },
+  {
+    title: 'Canvas | Quizzes Feature Comparison',
+    about: 'What Classic Quizzes and New Quizzes each offer.',
+    url: 'https://docs.google.com/document/d/11nSS2EP0UpSM6dcuEFnoF-hC6lyqWbE9JSHELNmfG2A/preview',
+  },
+]
+
+/** A drawer from the right: the format, reference documents, and the version. */
 export function HelpCenter({ isOpen, onClose, returnFocusTo, appVersion }: Props) {
   const panelRef = useDialogFocus<HTMLDivElement>(isOpen, onClose)
   const [check, setCheck] = useState<ManualCheckResult | 'checking' | null>(null)
@@ -100,6 +127,27 @@ export function HelpCenter({ isOpen, onClose, returnFocusTo, appVersion }: Props
               Automatic numbering in Google Docs is fine: the app reads the numbers Docs shows. If the Doc has tabs, choose the tab with
               the questions.
             </p>
+          </section>
+
+          <section aria-labelledby="ref-docs-h">
+            <h3 id="ref-docs-h" className="font-black text-sm text-gray-900 mb-2">Reference documents</h3>
+            <div className="space-y-2">
+              {REFERENCE_DOCS.map((d) => (
+                <a
+                  key={d.url}
+                  href={d.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-start justify-between gap-3 p-3 bg-slate-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 rounded-xl transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <span className="min-w-0">
+                    <b className="block text-[13px] text-gray-900 group-hover:text-brand">{d.title}</b>
+                    <small className="block text-xs text-gray-600 mt-0.5">{d.about}</small>
+                  </span>
+                  <ExternalLink className="w-4 h-4 flex-shrink-0 mt-0.5 text-gray-600 group-hover:text-brand" aria-label="Opens in your browser" />
+                </a>
+              ))}
+            </div>
           </section>
 
           <section>

@@ -77,3 +77,55 @@ describe('"Question N" headings', () => {
     expect(quizSections(r).map((s) => s.title)).toEqual(['Quiz A', 'Quiz B'])
   })
 })
+
+describe('the eCampus templates', () => {
+  const title = (text: string): DocLine => ({ text, bold: false, bullet: false, heading: true, headingLevel: 0 })
+
+  it('Quiz Questions Extraction Template: the Heading 1 above each module names the quiz', () => {
+    const r = splitDocument([
+      title('HIST 101 Quiz Questions'),
+      h(1, 'Reading Quiz 1'),
+      h(2, 'Module 1'),
+      t('Multiple Choice Example Question'),
+      t('Points: 1'),
+      t('1) Q'),
+      t('*a) x'),
+      t(''),
+      h(1, 'Reading Quiz 2'),
+      h(2, 'Module 2'),
+      t('Points: 1'),
+      t('1) Q'),
+      t('*a) x'),
+    ])
+    expect(quizSections(r).map((s) => s.title)).toEqual(['Reading Quiz 1', 'Reading Quiz 2'])
+  })
+
+  it('Classic Quiz Template: the questions at the top are the quiz; the template section is set aside', () => {
+    const lines = [
+      title('BIOL 191 Week 2 Quiz'),
+      t('Points: 1'),
+      t('1) What is the most common color of an apple?'),
+      t('*a) Red'),
+      t('b) Blue'),
+      h(1, 'Instructions and Question Type Templates'),
+      t('We use some specialized tool to create quizzes…'),
+      h(2, 'Multiple Choice Template:'),
+      t('Points: #'),
+      t('#) Question'),
+      t('*a) Correct Answer'),
+      h(2, 'True/False Template:'),
+      t('Points: #'),
+      t('#) Question'),
+      t('*a) True'),
+    ]
+    const r = splitDocument(lines)
+    const quizzes = quizSections(r)
+    expect(quizzes).toHaveLength(1)
+    expect(quizzes[0].title).toBe('BIOL 191 Week 2 Quiz')
+    expect(quizzes[0].lines.map((l) => l.text)).toContain('1) What is the most common color of an apple?')
+    expect(quizzes[0].lines.map((l) => l.text)).not.toContain('#) Question')
+    // Nothing is lost: every line is still in the Doc's segments, in order.
+    const all = r.segments.flatMap((s) => (s.kind === 'other' ? s.lines : [...(s.section.heading ? [s.section.heading] : []), ...s.section.lines]))
+    expect(all.map((l) => l.text)).toEqual(lines.map((l) => l.text))
+  })
+})
