@@ -48,16 +48,21 @@ export function isGoogleSecretConfigured(): boolean {
  * enough here: the questions are in Google Docs that faculty members wrote, which the in-app
  * Drive picker has to list and read, and `drive.file` cannot see a file the app did not create.
  *
- * `drive.readonly` is one of Google's **restricted** scopes. The consequences are worth stating
- * plainly, because they are not obvious:
- *   - With an **External** consent screen in **Testing**, it needs no review, but only listed
- *     test users can sign in, and Google ends every sign-in after **7 days**, so people sign in
- *     again about once a week.
- *   - **Publishing** an External consent screen with a restricted scope requires an annual
+ * `drive.readonly` is one of Google's **restricted** scopes, and `documents` is **sensitive**. The
+ * app is set up as Canvas Rubric Creator is, which has the same need to read and change people's
+ * own Docs:
+ *   - The consent screen is **External** and stays in **Testing**, with each user added as a test
+ *     user. That needs no Google review.
+ *   - Google ends sign-ins from apps in Testing after **7 days**, so people sign in again about
+ *     once a week. getAccessToken() clears the dead sign-in and tells the window, which asks the
+ *     person to sign in again rather than looking signed in while every Doc fails.
+ *   - Google shows an "unverified app" warning on the first sign-in (Advanced → Go to Canvas Quiz
+ *     Creator). The Help Center says so.
+ *   - Do not **publish** the consent screen: with a restricted scope that requires an annual
  *     third-party security assessment, which is expensive.
- *   - An **Internal** consent screen (a Cloud project owned by the university's Google Workspace)
- *     avoids both: no review, no test-user list, and no 7-day limit, for anyone with a university
- *     Google account. That is the setup to use for real use.
+ *   - The alternative, if the university will host it: an **Internal** consent screen in a Cloud
+ *     project owned by its Google Workspace has no review, no test-user list and no 7-day limit,
+ *     for university accounts only.
  *
  * Google lets people untick any of these on its consent screen and still completes the sign-in,
  * so googleAuth.ts checks what was actually granted: see REQUIRED_SCOPES.

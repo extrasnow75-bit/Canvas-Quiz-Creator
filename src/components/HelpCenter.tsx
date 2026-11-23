@@ -136,6 +136,25 @@ export function HelpCenter({ isOpen, onClose, returnFocusTo, appVersion }: Props
           </section>
 
           <section>
+            <h3 className="font-black text-sm text-gray-900 mb-1.5">Google sign-in</h3>
+            <ul className="list-disc pl-5 space-y-1 m-0">
+              <li>
+                <b>Google asks you to sign in again about once a week.</b> That is expected: Google ends sign-ins weekly for apps
+                still in testing. Open Initial setup and choose Sign in with Google.
+              </li>
+              <li>
+                <b>Google shows a warning the first time you sign in.</b> Choose <b>Advanced</b>, then{' '}
+                <b>Go to Canvas Quiz Creator</b>. The app has not been through Google’s public review, which internal use does not
+                need.
+              </li>
+              <li>
+                <b>On the Google screen that asks what to allow, tick every box.</b> The app needs to read your Google Drive and edit
+                Google Docs. If a box is left unticked, it asks you to sign in again.
+              </li>
+            </ul>
+          </section>
+
+          <section>
             <h3 className="font-black text-sm text-gray-900 mb-1.5">AI model used</h3>
             <p>
               <b className="text-gray-900">gemini-3.8-flash</b>, only when you ask for it: laying out questions the app’s rules could not fix,

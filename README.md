@@ -112,8 +112,14 @@ In the Google Cloud Console project used for the eCampus desktop apps:
    `electron/ipc/googleConfig.ts` (it is public and safe to commit).
 3. Put the client secret in `.env.local` as `MAIN_VITE_GOOGLE_CLIENT_SECRET=...` (see
    `.env.example`). Never commit it.
-4. Keep the OAuth consent screen in **Testing** with the users listed as test users. See the
-   comments in `googleConfig.ts` for why.
+4. **OAuth consent screen:** External, kept in **Testing**, with each user added as a test
+   user: the same setup as Canvas Rubric Creator. Do not publish it (a restricted scope needs a
+   paid security assessment to publish). What users will notice:
+   - Google asks them to sign in again about once a week.
+   - The first sign-in shows Google's "unverified app" warning: they choose **Advanced**, then
+     **Go to Canvas Quiz Creator**.
+
+   See the comments in `googleConfig.ts` for the reasons and the alternative.
 
 ## Tests
 
