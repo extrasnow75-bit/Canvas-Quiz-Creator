@@ -106,3 +106,19 @@ export interface DocLine {
   /** The paragraph is a heading (Title, Heading 1–6): a section title, never quiz content. */
   heading: boolean
 }
+
+// ─── Creating a quiz in Canvas ─────────────────────────────────────────────────
+
+/** Where one course has got to while a quiz is being created. */
+export type CourseRunStatus =
+  | { state: 'waiting' }
+  | { state: 'working'; added: number; total: number }
+  | { state: 'done'; added: number; quizUrl: string }
+  /** `quizUrl` is set when the quiz itself was created before the failure, so the developer can find it. */
+  | { state: 'failed'; message: string; added: number; quizUrl?: string }
+  | { state: 'skipped' }
+
+export interface ProgressEvent {
+  courseId: string
+  status: CourseRunStatus
+}

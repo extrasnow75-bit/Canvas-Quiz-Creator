@@ -31,8 +31,6 @@ const STATIC_ALLOWED_HOSTS = new Set([
   'accounts.google.com',
   'docs.google.com',
   'drive.google.com',
-  // Where the user gets a Gemini API key. Linked from Initial Setup and the Help Center.
-  'aistudio.google.com',
   // Instructure's public documentation — the Canvas token instructions cite it, and Part 3's
   // "Canvas Docs" button opens the REST API reference. Neither is the user's own Canvas
   // instance; that is `canvasHost` below.

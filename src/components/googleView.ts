@@ -24,25 +24,25 @@ export function googleLine(state: GoogleCheckState, who?: string | null): Google
     case 'valid':
       return {
         tone: 'good',
-        text: `Signed in to Google${who ? ` as ${who}` : ''}. Extractions can be saved as Google Docs and Sheets.`,
+        text: `Signed in to Google${who ? ` as ${who}` : ''}. The app can read quiz questions from your Google Docs.`,
         offerSignIn: false,
       }
     case 'unknown':
       return {
         tone: 'warn',
-        text: 'Could not check your Google sign-in just now. Google may be unavailable, or your internet connection may be down. You can still try, or save files to your computer.',
+        text: 'Could not check your Google sign-in just now. Google may be unavailable, or your internet connection may be down. You can still try.',
         offerSignIn: false,
       }
     case 'expired':
       return {
         tone: 'warn',
-        text: 'Your Google sign-in has expired. Sign in again to save to Google Drive, or save files to your computer.',
+        text: 'Your Google sign-in has expired. Sign in again so the app can read your Google Docs.',
         offerSignIn: true,
       }
     case 'none':
       return {
         tone: 'neutral',
-        text: 'Not signed in to Google. Extractions will be saved as files on your computer.',
+        text: 'Not signed in to Google. Sign in so the app can read quiz questions from your Google Docs.',
         offerSignIn: true,
       }
   }

@@ -11,7 +11,6 @@ describe('isAllowedExternalUrl', () => {
       'https://accounts.google.com/o/oauth2/v2/auth?x=1',
       'https://docs.google.com/document/d/abc/edit',
       'https://drive.google.com/open?id=abc',
-      'https://aistudio.google.com',
       'https://community.instructure.com/en/kb/articles/662901',
       'https://canvas.instructure.com/doc/api/file.accessing_via_api.html',
       'https://github.com/owner/repo/releases/latest',

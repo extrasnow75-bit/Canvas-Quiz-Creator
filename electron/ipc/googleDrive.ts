@@ -319,6 +319,32 @@ export async function getGoogleDocHtml(rawFileId: string): Promise<string> {
   return response.text()
 }
 
+/**
+ * A Google Doc as the Docs API returns it, with every tab's content.
+ *
+ * The quiz reader needs this rather than an export: only the Docs API says how automatic list
+ * numbering is drawn, which tab a paragraph is in, and which text is a heading. See docLines.ts.
+ * The Google Docs API has to be enabled in the Cloud project; drive.readonly authorises it.
+ */
+export async function getGoogleDocStructure(rawFileId: string): Promise<unknown> {
+  const fileId = assertFileId(rawFileId)
+  const response = await authorized(
+    `https://docs.googleapis.com/v1/documents/${fileId}?includeTabsContent=true`,
+  )
+  if (response.status === 403) {
+    const detail = await parseGoogleError(response)
+    if (/has not been used|is disabled|SERVICE_DISABLED/i.test(detail)) {
+      throw new Error(
+        'The Google Docs API is not turned on for this app yet. Whoever set up the app needs to ' +
+          'enable it in the Google Cloud Console (APIs & Services → Library → Google Docs API).',
+      )
+    }
+    throw new Error('Google would not let the app read that document. Check that you can open it in Google Docs.')
+  }
+  if (!response.ok) throw await driveError(response, 'document')
+  return response.json()
+}
+
 /** A Google Sheet as CSV. */
 export async function getGoogleSheetCsv(rawFileId: string): Promise<string> {
   const fileId = assertFileId(rawFileId)

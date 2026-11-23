@@ -12,7 +12,7 @@ import { getCanvasToken } from './credentials'
 import { fetchWithRetry, RequestTimeoutError } from './httpRetry'
 import { readSettings } from './settings'
 import { chooseCourses, nextPageUrl, type CourseChoice, type RawCourse } from './courseList'
-import type { Question, QuizEngine } from './quizModel'
+import type { CourseRunStatus, ProgressEvent, Question, QuizEngine } from './quizModel'
 import {
   canBuild,
   classicQuestionBody,
@@ -147,19 +147,6 @@ export async function listCourses(
 
 // ─── Creating a quiz ───────────────────────────────────────────────────────────
 
-export type CourseRunStatus =
-  | { state: 'waiting' }
-  | { state: 'working'; added: number; total: number }
-  | { state: 'done'; added: number; quizUrl: string }
-  /** `quizUrl` is set when the quiz itself was created before the failure, so the developer can find it. */
-  | { state: 'failed'; message: string; added: number; quizUrl?: string }
-  | { state: 'skipped' }
-
-export interface ProgressEvent {
-  courseId: string
-  status: CourseRunStatus
-}
-
 function failureMessage(status: number, detail: string): string {
   if (status === 401) return EXPIRED_TOKEN_MESSAGE
   if (status === 403)
@@ -244,8 +231,8 @@ async function createInCourse(args: {
 /**
  * Create the same quiz in each course, one course at a time.
  *
- * A failure in one course does not stop the others. Stopping (the signal) finishes the request in
- * flight, then marks the remaining courses skipped. Questions the app cannot build in this engine
+ * A failure in one course does not stop the others. `shouldStop` lets the course in progress
+ * finish, then marks the remaining courses skipped; the signal cancels immediately. Questions the app cannot build in this engine
  * are left out; the preview has already said so.
  */
 export async function createQuizInCourses(args: {
@@ -254,6 +241,8 @@ export async function createQuizInCourses(args: {
   settings: QuizSettings
   questions: Question[]
   signal?: AbortSignal
+  /** Checked between courses: true finishes the course in progress, then skips the rest. */
+  shouldStop?: () => boolean
   onProgress: (e: ProgressEvent) => void
   newId: () => string
 }): Promise<{ ok: true; results: ProgressEvent[] } | { ok: false; message: string }> {
@@ -269,7 +258,7 @@ export async function createQuizInCourses(args: {
 
   const results: ProgressEvent[] = []
   for (const courseId of args.courseIds) {
-    if (args.signal?.aborted) {
+    if (args.signal?.aborted || args.shouldStop?.()) {
       const e = { courseId, status: { state: 'skipped' } as CourseRunStatus }
       results.push(e)
       args.onProgress(e)

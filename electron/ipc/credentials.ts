@@ -1,9 +1,8 @@
 /**
  * Credentials, encrypted at rest by the OS keychain.
  *
- * Two secrets live here: the Canvas access token and the Gemini API key. The Google refresh
- * token has its own store in googleAuth.ts, for no better reason than that it is written by the
- * sign-in flow rather than by the user typing into a box.
+ * The secret that lives here is the Canvas access token. The Google refresh token has its own
+ * store in googleAuth.ts, because it is written by the sign-in flow rather than typed by the user.
  *
  * The Canvas token is why this module exists and why it is shaped the way it is. A Canvas access
  * token acts as the instructor who issued it: enrollments, submissions, grades, student names,
@@ -31,7 +30,6 @@ const CREDS_PATH = join(app.getPath('userData'), 'credentials.enc')
 
 interface StoredCredentials {
   canvasToken?: string
-  geminiApiKey?: string
 }
 
 /** What the renderer is allowed to know about a stored secret. */
@@ -102,23 +100,3 @@ export function getCanvasToken(): string | null {
 export function canvasTokenStatus(): CredentialStatus {
   return statusOf(readAll().canvasToken)
 }
-
-// ─── Gemini API key ───────────────────────────────────────────────────────────
-
-export function setGeminiApiKey(key: string | null): void {
-  const creds = readAll()
-  const cleaned = key?.trim() ?? ''
-  if (cleaned) creds.geminiApiKey = cleaned
-  else delete creds.geminiApiKey
-  writeAll(creds)
-}
-
-/** Main-process only. Never expose this over IPC. */
-export function getGeminiApiKey(): string | null {
-  return readAll().geminiApiKey ?? null
-}
-
-export function geminiKeyStatus(): CredentialStatus {
-  return statusOf(readAll().geminiApiKey)
-}
-
