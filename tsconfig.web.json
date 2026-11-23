@@ -27,6 +27,10 @@
     ]
   },
   "include": [
-    "src"
+    "src",
+    "electron/ipc/quizModel.ts",
+    "electron/ipc/quizFormat.ts",
+    "electron/ipc/quizPayloads.ts",
+    "electron/ipc/docLines.ts"
   ]
 }
