@@ -74,7 +74,7 @@ True and False. Type codes: `MA`, `E`, `F`, `MT`, `File`, `MD`, `Categorize`, `N
 
 ## Setting it up
 
-Two things, both under **Initial setup** in the app:
+Under **Initial setup** in the app (the first two are required):
 
 | | Needed for | Where to get it |
 | --- | --- | --- |
