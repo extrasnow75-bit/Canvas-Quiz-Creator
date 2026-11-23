@@ -38,6 +38,7 @@ import type {
   QuestionType,
   QuizEngine,
 } from './quizModel'
+import { canBuild } from './quizPayloads'
 
 // ─── Line patterns ─────────────────────────────────────────────────────────────
 
@@ -660,6 +661,22 @@ export function engineIssues(questions: Question[], engine: QuizEngine): Issue[]
         line: q.line,
         question: index,
       })
+    } else if (!canBuild(q, engine)) {
+      out.push({
+        severity: 'warning',
+        message: `The app cannot build ${TYPE_LABELS[q.type].toLowerCase()} questions in ${ENGINE_NAMES[engine]} yet. This question will be left out; add it by hand in Canvas.`,
+        line: q.line,
+        question: index,
+      })
+    } else if (engine === 'classic' && q.type === 'file_upload' && q.fileUpload) {
+      const f = q.fileUpload
+      if (f.showCalculator || f.fileLimit !== null || f.fileTypes.length > 0)
+        out.push({
+          severity: 'warning',
+          message: 'Classic Quizzes file upload questions have no calculator, file limit or file type settings, so those lines will be ignored.',
+          line: q.line,
+          question: index,
+        })
     }
   })
   return out

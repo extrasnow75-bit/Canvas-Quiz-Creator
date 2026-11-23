@@ -21,7 +21,7 @@ import { app } from 'electron'
  * update check that reports a failure every time. Rename on GitHub first, then land the change
  * here. (Renamed from Consolidated_Rubric_App_V2 in September 2026.)
  */
-const RELEASES_REPO = 'extrasnow75-bit/Rubric-Creator-Desktop-App'
+const RELEASES_REPO = 'extrasnow75-bit/Canvas-Quiz-Creator'
 
 export const RELEASES_PAGE = `https://github.com/${RELEASES_REPO}/releases/latest`
 const LATEST_API = `https://api.github.com/repos/${RELEASES_REPO}/releases/latest`

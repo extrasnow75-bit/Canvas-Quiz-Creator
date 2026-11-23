@@ -27,10 +27,13 @@ export interface RecentEntry {
 
 export interface Settings {
   zoomLevel?: number
-  /** The user ticked "Don't show this again" on the local-save notice. */
-  hideLocalSaveNotice?: boolean
-  /** Canvas course URL. Not a secret, but it pins where the token may be sent. */
-  canvasCourseUrl?: string
+  /**
+   * The Canvas site, e.g. https://boisestate.instructure.com. Not a secret, but it pins where the
+   * token may be sent: every course the app creates a quiz in must be on this site.
+   */
+  canvasSite?: string
+  /** The quiz engine chosen last time, so a developer who always uses one is not asked again. */
+  lastEngine?: 'classic' | 'new'
   recentDocs?: RecentEntry[]
   recentImages?: RecentEntry[]
 }
