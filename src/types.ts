@@ -55,8 +55,24 @@ export type ReadDocResult =
       result: ParseResult
       /** When someone last edited the Doc by hand after the app wrote to it, if they have. */
       manualEditAt: string | null
+      /** A trial run of the automatic fixes, nothing written: what step 3 can promise. */
+      fixPreview: FixPreview
     }
   | { ok: false; message: string }
+
+export interface FixPreview {
+  /** Formatting problems now (errors that block Create). */
+  problems: number
+  /** How many of those the automatic fixes would clear. */
+  autoFixable: number
+  /** How many would be left for a person (or, last of all, Gemini). */
+  needsPerson: number
+  /** What the automatic fixes would change. */
+  wouldChange: string[]
+  needsPersonMessages: string[]
+  /** The automatic fixes would change at least one line. */
+  anyChange: boolean
+}
 
 export interface ReformatChange {
   kind: 'answer' | 'grading' | 'format'
@@ -82,7 +98,7 @@ export type ReformatResult =
   | (ReformatSummary & {
       ok: true
       nothingChanged: false
-      target: { fileId: string; name: string; tabId: string | null; tabTitle: string; inNewDoc: boolean; why?: string; url: string }
+      target: { fileId: string; name: string; tabId: string | null; tabTitle: string; inNewDoc: boolean; why?: string; url: string; sourceTabId: string | null }
       stamp: string
     })
   | { ok: false; message: string }
@@ -152,7 +168,7 @@ declare global {
       }
       quiz: {
         readDoc(args: { fileId: string; tabId?: string; refresh?: boolean }): Promise<ReadDocResult>
-        reformat(args: { fileId: string; tabId?: string }): Promise<ReformatResult>
+        reformat(args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string }): Promise<ReformatResult>
         proposeRevision(args: { fileId: string; tabId: string; instruction: string }): Promise<ProposeRevisionResult>
         applyRevision(args: { proposalId: string }): Promise<{ ok: true; stamp: string; url: string } | { ok: false; message: string }>
         discardRevision(): Promise<void>

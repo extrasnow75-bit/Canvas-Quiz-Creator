@@ -26,7 +26,7 @@ import { addTabRequest, clearTabRequest, fillTabRequests, isAppHeaderLine, stamp
 import type { FixedLine, ReformatResult as RuleResult } from './ipc/reformat'
 import { docToLines, listTabs, type DocsDocument } from './ipc/docLines'
 import { parseQuiz } from './ipc/quizFormat'
-import type { Question, QuizEngine } from './ipc/quizModel'
+import type { DocLine, Question, QuizEngine } from './ipc/quizModel'
 import type { QuizSettings } from './ipc/quizPayloads'
 import { checkForUpdate, checkNow, RELEASES_PAGE } from './ipc/updateCheck'
 import {
@@ -318,11 +318,38 @@ ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string
       appWrites.set(args.fileId, doc.revisionId) // tell the person once per edit, not on every read
     }
 
-    return { ok: true as const, title: doc.title ?? '', tabs, tabId: tabId ?? null, lines, result: parseQuiz(lines), manualEditAt }
+    const result = parseQuiz(lines)
+    return { ok: true as const, title: doc.title ?? '', tabs, tabId: tabId ?? null, lines, result, manualEditAt, fixPreview: previewFixes(lines, result) }
   } catch (e) {
     return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
   }
 })
+
+/**
+ * What the automatic fixes would do to these questions, worked out without writing anything: how
+ * many of the problems they would clear, how many would still need a person, and what they would
+ * change. Shown in step 3 so the developer knows before choosing "Fix automatically".
+ */
+function previewFixes(lines: DocLine[], current: ReturnType<typeof parseQuiz>) {
+  const errorsNow = current.issues.filter((i) => i.severity === 'error').length
+  const source = lines.filter((l) => !isAppHeaderLine(l.text, l.heading))
+  const trial = reformatQuiz(source)
+  const errorsAfter = trial.parsed.issues.filter((i) => i.severity === 'error').length
+  const needsPerson = trial.parsed.issues
+    .filter((i) => i.severity === 'error')
+    .map((i) => {
+      const q = i.question !== null ? trial.parsed.questions[i.question] : null
+      return `${q ? `Question ${q.number ?? i.question! + 1}: ` : ''}${i.message}`
+    })
+  return {
+    problems: errorsNow,
+    autoFixable: Math.max(0, errorsNow - errorsAfter),
+    needsPerson: errorsNow === 0 ? 0 : errorsAfter,
+    wouldChange: trial.changes.map((c) => c.message),
+    needsPersonMessages: errorsNow === 0 ? [] : needsPerson,
+    anyChange: trial.lines.some((l) => l.changed),
+  }
+}
 
 const SCOPE_PROBLEM = /does not have permission to edit Google Docs/
 
@@ -334,7 +361,7 @@ const SCOPE_PROBLEM = /does not have permission to edit Google Docs/
  * When the person cannot edit the Doc (shared view-only), or Google will not add a tab, the
  * questions go into a new Doc in their My Drive instead, and the result says so and why.
  */
-ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: string }) => {
+ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string }) => {
   try {
     const doc = (await getGoogleDocStructure(args.fileId)) as DocsDocument
     const tabs = listTabs(doc)
@@ -346,7 +373,11 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
     // the rules' answer if it passes every check in aiReformat.ts.
     let ai: { used: boolean; note: string } | null = null
     const ruleErrors = r.parsed.issues.filter((i) => i.severity === 'error').length
-    if (ruleErrors > 0 && getGeminiApiKey()) {
+    // Gemini is a last resort: only when asked for, and only when the rules left problems.
+    if (args.useAi && ruleErrors > 0 && !getGeminiApiKey()) {
+      ai = { used: false, note: 'No Gemini API key is saved, so only the app’s own fixes were used.' }
+    }
+    if (args.useAi && ruleErrors > 0 && getGeminiApiKey()) {
       try {
         const answer = await askForLines(fallbackPrompt(source))
         const checked = checkFallback(source, r, answer.lines)
@@ -370,7 +401,7 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
     const check = r.changes.filter((c) => c.kind !== 'format').map((c) => c.message)
     const summary = { changes: r.changes, problems, questionCount: r.parsed.questions.length, ai }
 
-    if (!r.lines.some((l) => l.changed)) return { ok: true as const, nothingChanged: true as const, ...summary }
+    if (!r.lines.some((l) => l.changed) && !args.replaceTabId) return { ok: true as const, nothingChanged: true as const, ...summary }
 
     const when = new Date()
     const notes = { check, needsPerson: problems }
@@ -379,7 +410,24 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
     let revisionId: string | null = null
 
     let why: string | undefined
-    if (await canEditFile(args.fileId)) {
+    if (args.replaceTabId) {
+      // Gemini's pass over a tab the app already wrote: replace that tab, with a new time stamp.
+      const replaceId = args.replaceTabId
+      const findTab = (list: any[] | undefined): any => {
+        for (const t of list ?? []) {
+          if (t.tabProperties?.tabId === replaceId) return t
+          const inner = findTab(t.childTabs)
+          if (inner) return inner
+        }
+        return null
+      }
+      const tab = findTab((doc as any).tabs)
+      if (!tab) throw new Error('The reformatted tab is no longer in the Doc. Run the automatic fixes again.')
+      const content: Array<{ endIndex?: number }> = tab.documentTab?.body?.content ?? []
+      const clear = clearTabRequest(replaceId, content[content.length - 1]?.endIndex ?? 1)
+      revisionId = (await docsBatchUpdate(args.fileId, [...(clear ? [clear] : []), ...fillTabRequests(replaceId, r.lines, notes, when)])).revisionId
+      target = { fileId: args.fileId, name: docTitle, tabId: replaceId, tabTitle: tab.tabProperties?.title ?? 'Reformatted questions', inNewDoc: false }
+    } else if (await canEditFile(args.fileId)) {
       try {
         const title = uniqueTabTitle(tabs.map((t) => t.title))
         const added = await docsBatchUpdate(args.fileId, [addTabRequest(title)])
@@ -406,7 +454,13 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
 
     if (revisionId) appWrites.set(target.fileId, revisionId)
     lastDoc = null
-    return { ok: true as const, nothingChanged: false as const, ...summary, target: { ...target, url: tabUrl(target.fileId, target.tabId) }, stamp: stampFor(when) }
+    return {
+      ok: true as const,
+      nothingChanged: false as const,
+      ...summary,
+      target: { ...target, url: tabUrl(target.fileId, target.tabId), sourceTabId: tabId ?? null },
+      stamp: stampFor(when),
+    }
   } catch (e) {
     return { ok: false as const, message: e instanceof Error ? e.message : String(e) }
   }
