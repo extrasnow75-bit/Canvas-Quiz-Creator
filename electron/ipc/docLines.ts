@@ -18,7 +18,7 @@ import type { DocLine } from './quizModel'
 // The parts of the Docs API response this reads. Everything else is ignored.
 interface TextRun {
   content?: string
-  textStyle?: { bold?: boolean }
+  textStyle?: { bold?: boolean; underline?: boolean; backgroundColor?: { color?: unknown } }
 }
 interface ParagraphElement {
   textRun?: TextRun
@@ -187,25 +187,28 @@ function linesFromBody(content: StructuralElement[] | undefined, lists: Document
     }
 
     // Split on soft line breaks, tracking bold per piece.
-    let pieces: Array<{ text: string; boldChars: number; chars: number }> = [{ text: '', boldChars: 0, chars: 0 }]
+    let pieces: Array<{ text: string; boldChars: number; markChars: number; chars: number }> = [{ text: '', boldChars: 0, markChars: 0, chars: 0 }]
     for (const run of runs) {
       const parts = (run.content ?? '').replace(/\n$/, '').split('\v')
       parts.forEach((part, idx) => {
-        if (idx > 0) pieces.push({ text: '', boldChars: 0, chars: 0 })
+        if (idx > 0) pieces.push({ text: '', boldChars: 0, markChars: 0, chars: 0 })
         const cur = pieces[pieces.length - 1]
         cur.text += part
         const visible = part.replace(/\s/g, '').length
         cur.chars += visible
         if (run.textStyle?.bold) cur.boldChars += visible
+        if (run.textStyle?.underline || run.textStyle?.backgroundColor?.color) cur.markChars += visible
       })
     }
-    pieces = pieces.length ? pieces : [{ text: '', boldChars: 0, chars: 0 }]
+    pieces = pieces.length ? pieces : [{ text: '', boldChars: 0, markChars: 0, chars: 0 }]
 
     pieces.forEach((piece, idx) => {
       lines.push({
         // The list marker belongs to the first line of the paragraph only.
         text: (idx === 0 ? prefix : '') + piece.text,
-        bold: piece.chars > 0 && piece.boldChars === piece.chars,
+        // "All of it" allows for an unformatted choice letter: "b) " + bold "Paris" counts as bold.
+        bold: piece.boldChars > 0 && piece.boldChars >= piece.chars - 3,
+        highlighted: piece.markChars > 0 && piece.markChars >= piece.chars - 3,
         bullet: bullet && idx === 0,
         heading,
       })
