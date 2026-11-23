@@ -42,7 +42,10 @@ app changed is highlighted, so the faculty member can compare it with the origin
    member's own marks, never from Gemini.
 3. **A person reviews.** The summary lists answer and point changes first. A quiz from a
    reformatted tab cannot be launched until someone ticks **Checked** for it.
-4. **Changes after that:** edit the tab by hand in Google Docs and choose **Read again** (the app
+4. **Points for questions with none.** When questions have no points, step 3 says how many and
+   offers a number (1 to start with). Fix automatically adds that Points line to each of them,
+   highlighted. Leave the field empty to add points yourself.
+5. **Changes after that:** edit the tab by hand in Google Docs and choose **Read again** (the app
    says "Manual edit detected at …"), or describe the change for Gemini and accept or discard the
    change list it produces.
 

@@ -85,6 +85,8 @@ export interface FixPreview {
   anyChange: boolean
   /** Questions the app would find after the automatic fixes: can be more than it reads now. */
   questionsAfterFix: number
+  /** Questions with no points, even after the automatic fixes: what "Points for questions with none" fills. */
+  missingPoints: number
 }
 
 export interface ReformatChange {
@@ -187,7 +189,7 @@ declare global {
       }
       quiz: {
         readDoc(args: { fileId: string; tabId?: string; refresh?: boolean; level?: number | null }): Promise<ReadDocResult>
-        reformat(args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string; level?: number | null }): Promise<ReformatResult>
+        reformat(args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string; level?: number | null; defaultPoints?: number | null }): Promise<ReformatResult>
         proposeRevision(args: { fileId: string; tabId: string; instruction: string }): Promise<ProposeRevisionResult>
         applyRevision(args: { proposalId: string }): Promise<{ ok: true; stamp: string; url: string } | { ok: false; message: string }>
         discardRevision(): Promise<void>

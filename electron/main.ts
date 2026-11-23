@@ -418,6 +418,8 @@ function previewFixes(title: string | null, current: ReturnType<typeof parseQuiz
     anyChange: trial.lines.some((l) => l.changed),
     /** Questions the app would find after the automatic fixes: can be more than it reads now. */
     questionsAfterFix: Math.max(current.questions.length, trial.parsed.questions.length),
+    /** Questions after the automatic fixes that still have no points: what the default would fill. */
+    missingPoints: trial.parsed.questions.filter((q) => q.points === null && q.type !== 'text_only').length,
   }
 }
 
@@ -431,13 +433,14 @@ const SCOPE_PROBLEM = /does not have permission to edit Google Docs/
  * When the person cannot edit the Doc (shared view-only), or Google will not add a tab, the
  * questions go into a new Doc in their My Drive instead, and the result says so and why.
  */
-ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string; level?: number | null }) => {
+ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: string; useAi?: boolean; replaceTabId?: string; level?: number | null; defaultPoints?: number | null }) => {
   try {
     const doc = (await getGoogleDocStructure(args.fileId)) as DocsDocument
     const tabs = listTabs(doc)
     const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : tabs[0]?.id
     const content = docToLines(doc, tabId).filter((l) => !isAppHeaderLine(l.text, l.heading))
-    let fix: DocumentFix = reformatDocument(content, args.level)
+    const options = { defaultPoints: typeof args.defaultPoints === 'number' ? args.defaultPoints : null }
+    let fix: DocumentFix = reformatDocument(content, args.level, undefined, options)
 
     // Gemini is a last resort: only when asked for, and only for quizzes the rules left with
     // problems. Its answer for a quiz is used only if it passes every check in aiReformat.ts.
@@ -460,7 +463,7 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
             refused.push(`${q.title ?? 'The quiz'}: Gemini was not used (${e instanceof Error ? e.message : String(e)})`)
           }
         }
-        if (overrides.size > 0) fix = reformatDocument(content, args.level, overrides)
+        if (overrides.size > 0) fix = reformatDocument(content, args.level, overrides, options)
         ai = {
           used: overrides.size > 0,
           note:

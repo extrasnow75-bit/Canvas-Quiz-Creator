@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DocLine } from './quizModel'
-import { reformatQuiz } from './reformat'
+import { addDefaultPoints, reformatQuiz } from './reformat'
 
 const line = (text: string, extra: Partial<DocLine> = {}): DocLine => ({ text, bold: false, bullet: false, heading: false, ...extra })
 const lines = (...t: Array<string | DocLine>) => t.map((x) => (typeof x === 'string' ? line(x) : x))
@@ -217,5 +217,17 @@ describe('text copied out of Canvas', () => {
     const r = reformatQuiz(lines('Question 1 1 pts', 'The longest bone in the', 'body is the:', 'femur', 'tibia'))
     expect(r.parsed.questions[0].text).toBe('The longest bone in the body is the:')
     expect(r.parsed.questions[0].answers.map((a) => a.text)).toEqual(['femur', 'tibia'])
+  })
+})
+
+describe('points for questions with none', () => {
+  it('adds Points above the question and any Type line, and leaves text-only items alone', () => {
+    const fixed = addDefaultPoints(
+      ['Points: 3', '1) Has points', '*a) x', 'b) y', 'Type: E', '2) No points', 'Type: Text only', 'Text to display: Read this.', '3) Also none', '*a) p', 'b) q'].map((text) => ({ text, changed: false, heading: false })),
+      1,
+    )
+    expect(fixed.added).toBe(2)
+    expect(fixed.lines.map((l) => l.text)).toEqual(['Points: 3', '1) Has points', '*a) x', 'b) y', 'Points: 1', 'Type: E', '2) No points', 'Type: Text only', 'Text to display: Read this.', 'Points: 1', '3) Also none', '*a) p', 'b) q'])
+    expect(fixed.lines.filter((l) => l.changed).map((l) => l.text)).toEqual(['Points: 1', 'Points: 1'])
   })
 })

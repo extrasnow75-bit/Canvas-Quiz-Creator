@@ -8,7 +8,8 @@
  * Pure.
  */
 import type { DocLine, ParseResult } from './quizModel'
-import { reformatQuiz, type Change, type FixedLine, type ReformatResult } from './reformat'
+import { addDefaultPoints, reformatQuiz, type Change, type FixedLine, type ReformatResult } from './reformat'
+import { parseQuiz } from './quizFormat'
 import { splitDocument, type SplitResult } from './quizSplit'
 
 export interface QuizFix {
@@ -30,7 +31,17 @@ export interface DocumentFix {
 const keep = (l: DocLine): FixedLine => ({ text: l.text, changed: false, heading: l.heading, headingLevel: l.headingLevel })
 
 /** `override` replaces one quiz's result (Gemini's pass over a quiz the rules could not fix). */
-export function reformatDocument(lines: DocLine[], level?: number | null, override?: Map<number, ReformatResult>): DocumentFix {
+export interface DocumentOptions {
+  /** Points for questions that have none. Null or absent leaves them to be reported. */
+  defaultPoints?: number | null
+}
+
+export function reformatDocument(
+  lines: DocLine[],
+  level?: number | null,
+  override?: Map<number, ReformatResult>,
+  options: DocumentOptions = {},
+): DocumentFix {
   const split = splitDocument(lines, level)
   const quizzes: QuizFix[] = []
   const out: FixedLine[] = []
@@ -44,7 +55,21 @@ export function reformatDocument(lines: DocLine[], level?: number | null, overri
     }
     const { section } = seg
     const index = quizzes.length
-    const result = override?.get(index) ?? reformatQuiz(section.lines)
+    let result = override?.get(index) ?? reformatQuiz(section.lines)
+    const dp = options.defaultPoints
+    if (dp !== null && dp !== undefined && Number.isFinite(dp) && dp >= 0) {
+      const withPoints = addDefaultPoints(result.lines, dp)
+      if (withPoints.added > 0) {
+        result = {
+          lines: withPoints.lines,
+          parsed: parseQuiz(withPoints.lines.map((l) => ({ text: l.text, bold: false, bullet: false, heading: l.heading, headingLevel: l.headingLevel }))),
+          changes: [
+            { kind: 'grading', question: null, message: `Gave ${withPoints.added} question${withPoints.added === 1 ? '' : 's'} with no points ${dp} ${dp === 1 ? 'point' : 'points'} each (the number you chose).` },
+            ...result.changes,
+          ],
+        }
+      }
+    }
     quizzes.push({ title: section.title, source: section.lines, result })
     if (section.heading) {
       if (out.length > 0) out.push({ text: '', changed: false, heading: false })

@@ -108,6 +108,8 @@ export function QuizBuilder({ hasGemini, site, onSiteChange, onTokenResult }: Pr
   /** The tab the reformatted questions came from, for Gemini's pass over the same original. */
   const [sourceTabId, setSourceTabId] = useState<string | null>(null)
   const [showQuiz, setShowQuiz] = useState<number | null>(null)
+  /** "Points for questions with none", as typed. Applied when the automatic fixes run. */
+  const [defaultPoints, setDefaultPoints] = useState('1')
 
   const [courses, setCourses] = useState<CourseChoice[]>([])
   const [blocked, setBlocked] = useState(false)
@@ -186,10 +188,12 @@ export function QuizBuilder({ hasGemini, site, onSiteChange, onTokenResult }: Pr
     setBlocked(false)
     try {
       const signedOffTab = isReformatted(doc)
+      const dp = Number(defaultPoints)
+      const points = totals.missingPoints > 0 && defaultPoints.trim() !== '' && Number.isFinite(dp) && dp >= 0 ? dp : null
       const res = await window.api.quiz.reformat(
         useAi && signedOffTab
-          ? { fileId: doc.fileId, tabId: sourceTabId ?? doc.tabId ?? undefined, useAi: true, replaceTabId: doc.tabId ?? undefined, level: doc.level }
-          : { fileId: doc.fileId, tabId: doc.tabId ?? undefined, useAi, level: doc.level },
+          ? { fileId: doc.fileId, tabId: sourceTabId ?? doc.tabId ?? undefined, useAi: true, replaceTabId: doc.tabId ?? undefined, level: doc.level, defaultPoints: points }
+          : { fileId: doc.fileId, tabId: doc.tabId ?? undefined, useAi, level: doc.level, defaultPoints: points },
       )
       if (!res.ok) return setReformatError(res.message)
       setReformat(res)
@@ -230,6 +234,7 @@ export function QuizBuilder({ hasGemini, site, onSiteChange, onTokenResult }: Pr
       auto: included.reduce((n, q) => n + q.fixPreview.autoFixable, 0),
       person: included.reduce((n, q) => n + q.fixPreview.needsPerson, 0),
       anyChange: included.some((q) => q.fixPreview.anyChange),
+      missingPoints: included.reduce((n, q) => n + q.fixPreview.missingPoints, 0),
       ready: included.reduce(
         (n, q) => n + q.result.questions.filter((_, qi) => !q.result.issues.some((x) => x.severity === 'error' && x.question === qi)).length,
         0,
@@ -534,8 +539,20 @@ export function QuizBuilder({ hasGemini, site, onSiteChange, onTokenResult }: Pr
               </div>
             )}
 
+            {totals.missingPoints > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-xl bg-amber-50 border border-amber-300 px-3 py-2.5 text-[13px] text-amber-900">
+                <span>
+                  <b className="text-gray-900">{plural(totals.missingPoints, 'question')}</b> {totals.missingPoints === 1 ? 'has' : 'have'} no points.
+                </span>
+                <label htmlFor={`${id}-dp`} className="font-bold text-gray-900">Points for questions with none</label>
+                <input id={`${id}-dp`} type="number" min={0} step={0.5} value={defaultPoints} onChange={(e) => setDefaultPoints(e.target.value)}
+                  className="w-20 border-2 border-gray-500 rounded-lg px-2 py-1 text-[13px] bg-white text-gray-900 focus:outline-none focus:border-brand focus-visible:ring-2 focus-visible:ring-brand" />
+                <span className="text-xs">Added by Fix automatically, highlighted in the new tab. Leave it empty to add points yourself.</span>
+              </div>
+            )}
+
             <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-              <button onClick={() => void runReformat(false)} disabled={reformatBusy !== null || (!totals.anyChange && totals.problems === 0)}
+              <button onClick={() => void runReformat(false)} disabled={reformatBusy !== null || (!totals.anyChange && totals.problems === 0 && !(totals.missingPoints > 0 && defaultPoints.trim() !== ''))}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-[13px] font-black disabled:bg-gray-200 disabled:text-gray-700 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
                 {reformatBusy === 'rules' ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Wand2 className="w-4 h-4" aria-hidden="true" />}
                 {reformatBusy === 'rules' ? 'Fixing…' : totals.auto > 0 ? `Fix ${totals.auto} automatically` : 'Tidy the formatting automatically'}

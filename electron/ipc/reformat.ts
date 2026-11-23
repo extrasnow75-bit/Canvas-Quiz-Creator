@@ -379,6 +379,42 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
   return { lines, changes: sortChanges(changes), parsed }
 }
 
+/**
+ * Give every question without a Points line the points the developer chose. Works on finished
+ * lines, so it applies to the rules' output and to Gemini's alike. The new line goes above the
+ * question's other template lines (Type:), as the template writes it. Text-only items (no number)
+ * are never worth points and are left alone.
+ */
+export function addDefaultPoints(lines: FixedLine[], points: number): { lines: FixedLine[]; added: number } {
+  const out: FixedLine[] = []
+  let added = 0
+  let pointsSeen = false
+  for (const l of lines) {
+    const t = l.text.trim()
+    if (l.heading || t === '') {
+      out.push(l)
+      continue
+    }
+    if (/^points?\s*[:=]/i.test(t)) {
+      pointsSeen = true
+      out.push(l)
+      continue
+    }
+    if (/^(?:\d{1,4}|#)\s*[).]/.test(t) && !/^[a-h]\)/i.test(t)) {
+      if (!pointsSeen) {
+        // Above any Type: line directly over the question.
+        let at = out.length
+        while (at > 0 && /^(?:question\s+)?type\s*:/i.test(out[at - 1].text.trim())) at--
+        out.splice(at, 0, { text: `Points: ${points}`, changed: true, heading: false })
+        added++
+      }
+      pointsSeen = false
+    }
+    out.push(l)
+  }
+  return { lines: out, added }
+}
+
 /** Answer and grading changes first, in question order; formatting last. */
 function sortChanges(changes: Change[]): Change[] {
   const rank: Record<ChangeKind, number> = { answer: 0, grading: 1, format: 2 }

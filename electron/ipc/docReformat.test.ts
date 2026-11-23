@@ -45,3 +45,11 @@ describe('reformatting a Doc with several quizzes', () => {
     expect(problems[0]).toMatch(/^Module 2 Quiz · Question 2: No answer is marked correct/)
   })
 })
+
+describe('default points across a Doc', () => {
+  it('fills every quiz and reports it once per quiz', () => {
+    const fix = reformatDocument([h(1, 'Quiz A'), t('1) Q'), t('*a) x'), t('b) y'), h(1, 'Quiz B'), t('Points: 4'), t('1) R'), t('*a) p'), t('b) q')], null, undefined, { defaultPoints: 2 })
+    expect(fix.quizzes.map((q) => q.result.parsed.questions[0].points)).toEqual([2, 4])
+    expect(fix.changes.filter((c) => /no points/.test(c.message)).map((c) => c.message)).toEqual(['Quiz A · Gave 1 question with no points 2 points each (the number you chose).'])
+  })
+})
