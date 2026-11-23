@@ -107,6 +107,8 @@ export interface DocLine {
   bullet: boolean
   /** The paragraph is a heading (Title, Heading 1–6): a section title, never quiz content. */
   heading: boolean
+  /** 1–6 for Heading 1–6, 0 for Title and Subtitle. Absent for ordinary text. */
+  headingLevel?: number
 }
 
 // ─── Creating a quiz in Canvas ─────────────────────────────────────────────────

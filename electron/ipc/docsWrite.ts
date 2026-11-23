@@ -3,7 +3,7 @@
  *
  * The tab starts with the app's own header, set as headings so the quiz reader skips it:
  *
- *     Reformatted questions — Nov 23, 2026 at 3:15 PM            (Heading 1: the time stamp)
+ *     Reformatted questions — Nov 23, 2026 at 3:15 PM            (Subtitle: the time stamp)
  *     Lines the app changed are highlighted. Compare …           (Heading 6)
  *     Check: Question 6: marked b) Jupiter correct, because …    (Heading 6, one per answer change)
  *     Still needs a person: Question 7: No answer is marked …    (Heading 6, one per problem)
@@ -50,15 +50,25 @@ export interface HeaderNotes {
   needsPerson: string[]
 }
 
+type Style = 'TITLE' | 'SUBTITLE' | 'HEADING_1' | 'HEADING_2' | 'HEADING_3' | 'HEADING_4' | 'HEADING_5' | 'HEADING_6' | 'NORMAL_TEXT'
+
 interface Paragraph {
   text: string
-  style: 'HEADING_1' | 'HEADING_6' | 'NORMAL_TEXT'
+  style: Style
   highlight: boolean
+}
+
+/** A heading is written back at its own level, so quiz titles stay quiz titles. */
+function styleFor(l: FixedLine): Style {
+  if (!l.heading) return 'NORMAL_TEXT'
+  const level = l.headingLevel ?? 6
+  return level === 0 ? 'TITLE' : (`HEADING_${Math.min(6, Math.max(1, level))}` as Style)
 }
 
 function paragraphs(lines: FixedLine[], notes: HeaderNotes, when: Date): Paragraph[] {
   const header: Paragraph[] = [
-    { text: `${TAB_BASE_TITLE} — ${stampFor(when)}`, style: 'HEADING_1', highlight: false },
+    // Subtitle, not Heading 1: quiz titles are headings, and the app's own line must never look like one.
+    { text: `${TAB_BASE_TITLE} — ${stampFor(when)}`, style: 'SUBTITLE', highlight: false },
     {
       text: 'Lines the app changed are highlighted. Compare them with the original questions, and fix anything wrong here, before creating the quiz. The original tab was not changed.',
       style: 'HEADING_6',
@@ -70,7 +80,7 @@ function paragraphs(lines: FixedLine[], notes: HeaderNotes, when: Date): Paragra
   ]
   const body: Paragraph[] = lines.map((l) => ({
     text: l.text,
-    style: l.heading ? 'HEADING_6' : 'NORMAL_TEXT',
+    style: styleFor(l),
     highlight: l.changed && l.text.trim() !== '',
   }))
   return [...header, ...body]

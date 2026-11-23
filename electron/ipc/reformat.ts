@@ -26,6 +26,8 @@ export interface FixedLine {
   changed: boolean
   /** Kept as a heading (a section title in the original). */
   heading: boolean
+  /** The heading's level in the original (1–6, 0 for Title), so it is written back the same. */
+  headingLevel?: number
 }
 
 export type ChangeKind =
@@ -93,6 +95,7 @@ interface Source {
   bold: boolean
   highlighted: boolean
   heading: boolean
+  headingLevel?: number
 }
 
 interface Choice {
@@ -126,7 +129,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
 
   // Pass 1: lines, and the answer key at the end if there is one.
   let src: Source[] = input
-    .map((l) => ({ text: clean(l.text), orig: clean(l.text), bold: l.bold, highlighted: !!l.highlighted, heading: l.heading }))
+    .map((l) => ({ text: clean(l.text), orig: clean(l.text), bold: l.bold, highlighted: !!l.highlighted, heading: l.heading, headingLevel: l.headingLevel }))
     .filter((l) => l.text !== '')
 
   const globalKey = new Map<string, string[]>()
@@ -238,7 +241,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
   for (const g of groups) fixAnswers(g, globalKey, changes)
 
   // Write it out.
-  const lines: FixedLine[] = preamble.map((l) => ({ text: l.text, changed: l.text !== l.orig, heading: l.heading }))
+  const lines: FixedLine[] = preamble.map((l) => ({ text: l.text, changed: l.text !== l.orig, heading: l.heading, headingLevel: l.headingLevel }))
   for (const g of groups) {
     if (lines.length > 0) lines.push({ text: '', changed: false, heading: false })
     if (g.points) {
@@ -249,7 +252,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
     const qText = `${g.number}) ${g.text}`.trimEnd()
     if (qText !== g.questionOrig) noteFormat('Rewrote question numbers in the template’s "1)" style')
     lines.push({ text: qText, changed: qText !== g.questionOrig, heading: false })
-    for (const b of g.body) lines.push({ text: b.text, changed: b.text !== b.orig, heading: b.heading })
+    for (const b of g.body) lines.push({ text: b.text, changed: b.text !== b.orig, heading: b.heading, headingLevel: b.headingLevel })
     for (const c of g.choices) {
       const text = `${c.correct ? '*' : ''}${c.letter}) ${c.text}`
       lines.push({ text, changed: text !== c.orig, heading: false })

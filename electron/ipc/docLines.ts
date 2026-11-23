@@ -179,6 +179,7 @@ function linesFromBody(content: StructuralElement[] | undefined, lists: Document
     const runs = (p.elements ?? []).map((e) => e.textRun).filter((r): r is TextRun => !!r?.content)
     const style = p.paragraphStyle?.namedStyleType ?? 'NORMAL_TEXT'
     const heading = style === 'TITLE' || style === 'SUBTITLE' || style.startsWith('HEADING_')
+    const headingLevel = style.startsWith('HEADING_') ? Number(style.slice(8)) || 6 : heading ? 0 : undefined
 
     let prefix = ''
     let bullet = false
@@ -213,6 +214,7 @@ function linesFromBody(content: StructuralElement[] | undefined, lists: Document
         highlighted: piece.markChars > 0 && piece.markChars >= piece.chars - 3,
         bullet: bullet && idx === 0,
         heading,
+        ...(headingLevel !== undefined ? { headingLevel } : {}),
       })
     })
   }
