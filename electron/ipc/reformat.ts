@@ -67,6 +67,21 @@ const KEY_ENTRY = /^(\d{1,4})\s*[.):-]?\s*((?:[a-h](?:\s*(?:,|&|and)\s*[a-h])*)|
 const KEY_INLINE = /(\d{1,4})\s*[.):-]\s*([a-h]|true|false|t|f)\b/gi
 const POINTS_SUFFIX = /\s*[([]?\s*(\d+(?:\.\d+)?)\s*(?:pts?\.?|points?)\s*[)\]]?\s*$/i
 const CORRECT_SUFFIX = /\s*(?:\*|\((?:correct|answer|right)\)|\[(?:correct|answer|right)\]|[-–]\s*correct|✓|✔)\s*$/i
+// Text copied out of Canvas. The student and results views print these around each question.
+const CANVAS_NOISE = /^(?:flag\s+question\b.*|group\s+of\s+answer\s+choices|unanswered(?:\s+question)?|you\s+answered|correct!?|incorrect!?|partial|question\s+\d{1,4}\s+of\s+\d{1,4})$/i
+/** Canvas's results view puts "Correct Answer" on the line above the correct choice. */
+const CANVAS_CORRECT_LABEL = /^correct\s+answers?$/i
+/** "2 pts" on a line of its own, as Canvas prints it under the question header. */
+const PTS_ONLY = /^(\d+(?:\.\d+)?)\s*(?:pts?\.?|points?)$/i
+/** "Question 3  2 pts": the header Canvas prints above each question. */
+const CANVAS_HEADER_PTS = /^question\s+(\d{1,4})\s+(\d+(?:\.\d+)?)\s*(?:pts?\.?|points?)$/i
+/** "Question 32 pts": the same header with the space lost in copying. */
+const CANVAS_HEADER_COMPACT = /^question\s+(\d{2,6})\s*(?:pts?\.?|points?)$/i
+/** "48213. Prompt": a Canvas question-bank id in place of a question number. */
+const CANVAS_BANK_ID = /^(\d{5,})\.\s+(.+)$/
+/** A question that runs on to the next line: it ends on a word that cannot end a sentence. */
+const RUNS_ON = /\b(?:be|on|in|of|to|that|which|when|with|and|or|not|may|the|a|an|is|are|was|were)$/i
+
 const TRUE_FALSE_PREFIX = /^(?:true\s*(?:or|\/)\s*false|t\s*\/\s*f)\s*[:.-]?\s*/i
 
 function clean(text: string): string {
@@ -104,6 +119,8 @@ interface Choice {
   correct: boolean
   marked: boolean // bold or highlighted in the original
   orig: string
+  /** The original gave it a letter. False for choices Canvas printed without one. */
+  lettered: boolean
 }
 
 interface Group {
@@ -120,6 +137,8 @@ interface Group {
   key: string[] | null
   /** Lines removed from this question because they were understood (answer notes). */
   absorbed: number
+  /** Copied from Canvas ("Question 3" header, bank id): its choices may have no letters. */
+  canvasStyle: boolean
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────────
@@ -171,7 +190,79 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
   let pendingType: Group['type'] = null
   let current: Group | null = null
 
+  let lastNumber = 0
+  /** A "Correct Answer" label was just seen: the next choice is the correct one. */
+  let correctNext = false
+  const startQuestion = (number: string, text: string, orig: string, canvasStyle: boolean): Group => {
+    const g: Group = {
+      points: pendingPoints,
+      type: pendingType,
+      number,
+      text,
+      questionOrig: orig,
+      body: [],
+      choices: [],
+      trailing: [],
+      key: null,
+      absorbed: 0,
+      canvasStyle,
+    }
+    groups.push(g)
+    pendingPoints = null
+    pendingType = null
+    if (/^\d+$/.test(number)) lastNumber = Number(number)
+    return g
+  }
+
   for (const l of src) {
+    // ── Text copied out of Canvas ──
+    if (CANVAS_NOISE.test(l.text)) {
+      noteFormat('Removed text copied from the Canvas page')
+      continue
+    }
+    if (CANVAS_CORRECT_LABEL.test(l.text) && current) {
+      correctNext = true
+      noteFormat('Removed text copied from the Canvas page')
+      continue
+    }
+    const headerPts = l.text.match(CANVAS_HEADER_PTS)
+    const compact = headerPts ? null : l.text.match(CANVAS_HEADER_COMPACT)
+    if (headerPts || compact) {
+      let number: string
+      let points: string
+      if (headerPts) {
+        number = headerPts[1]
+        points = headerPts[2]
+      } else {
+        // The space was lost: "32" after question 2 is question 3, worth 2 points.
+        const digits = compact![1]
+        const expected = String(lastNumber + 1)
+        number = digits.startsWith(expected) && digits.length > expected.length ? expected : digits.slice(0, -1)
+        points = digits.slice(number.length)
+        changes.push({
+          kind: 'grading',
+          question: Number(number),
+          message: `Question ${number}: read the Canvas header “${l.text}” as question ${number}, worth ${points} ${points === '1' ? 'point' : 'points'}. Check the points.`,
+        })
+      }
+      pendingPoints = { value: points, orig: '' }
+      current = startQuestion(number, '', '', true)
+      continue
+    }
+    const ptsOnly = l.text.match(PTS_ONLY)
+    if (ptsOnly) {
+      if (current && !current.points && current.choices.length === 0) current.points = { value: ptsOnly[1], orig: '' }
+      else pendingPoints = { value: ptsOnly[1], orig: '' }
+      noteFormat('Rewrote points lines as "Points: N"')
+      continue
+    }
+    const bank = l.text.match(CANVAS_BANK_ID)
+    if (bank && !l.heading) {
+      noteFormat('Replaced Canvas question-bank ids with question numbers')
+      current = startQuestion(String(lastNumber + 1), bank[2].trim(), '', true)
+      continue
+    }
+
     if (l.heading && !QUESTION_HEADER_RE.test(l.text)) {
       // A heading between questions is a section title; keep it where it was.
       if (current) current.body.push(l)
@@ -201,21 +292,8 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
         pendingPoints = { value: suffix[1], orig: '' }
         changes.push({ kind: 'grading', question: null, message: `Question ${number}: moved "${suffix[0].trim()}" from the question to a Points line.` })
       }
-      current = {
-        points: pendingPoints,
-        type: pendingType,
-        number,
-        text,
-        questionOrig: l.orig,
-        body: [],
-        choices: [],
-        trailing: [],
-        key: null,
-        absorbed: 0,
-      }
-      groups.push(current)
-      pendingPoints = null
-      pendingType = null
+      // "Question 3" (the word, not "3)") is how Canvas prints questions: its choices may have no letters.
+      current = startQuestion(number, text, l.orig, q[1] !== undefined)
       continue
     }
     if (!current) {
@@ -233,6 +311,11 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
     }
     const choice = parseChoice(l)
     if (choice) {
+      if (correctNext && !choice.correct) {
+        choice.correct = true
+        changes.push({ kind: 'answer', question: Number(current.number) || null, message: `Question ${current.number}: marked ${choice.letter}) ${choice.text} correct, from Canvas’s “Correct Answer” label.` })
+      }
+      correctNext = false
       current.choices.push(choice)
       continue
     }
@@ -242,6 +325,26 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
       current.questionOrig = ''
       continue
     }
+    // A question copied from Canvas: the lines after it are its choices, which Canvas prints
+    // without letters. A line that carries on an unfinished question is joined to it instead.
+    if (current.canvasStyle && current.text !== '' && !l.heading && current.body.length === 0 && current.choices.every((c) => !c.lettered)) {
+      if (current.choices.length === 0 && RUNS_ON.test(current.text) && !l.text.startsWith('*')) {
+        current.text = `${current.text} ${l.text}`
+        continue
+      }
+      const starred = l.text.startsWith('*')
+      const text = l.text.replace(/^\*\s*/, '')
+      const letter = String.fromCharCode(97 + current.choices.length)
+      const correct = starred || correctNext
+      if (correctNext) changes.push({ kind: 'answer', question: Number(current.number) || null, message: `Question ${current.number}: marked ${letter}) ${text} correct, from Canvas’s “Correct Answer” label.` })
+      correctNext = false
+      if (current.choices.length === 0) {
+        changes.push({ kind: 'grading', question: Number(current.number) || null, message: `Question ${current.number}: the choices copied from Canvas had no letters, so they were lettered. Check they are the choices, not part of the question.` })
+      }
+      current.choices.push({ letter, text, correct, marked: l.bold || l.highlighted, orig: '', lettered: false })
+      continue
+    }
+
     // More question text before the choices; anything after them stays after them.
     if (current.choices.length === 0) current.body.push(l)
     else current.trailing.push(l)
@@ -299,7 +402,7 @@ function parseChoice(l: Source): Choice | null {
     correct = true
     text = text.replace(CORRECT_SUFFIX, '').trim()
   }
-  return { letter, text, correct, marked: l.bold || l.highlighted, orig: l.orig }
+  return { letter, text, correct, marked: l.bold || l.highlighted, orig: l.orig, lettered: true }
 }
 
 /**
@@ -338,8 +441,8 @@ function fixAnswers(g: Group, globalKey: Map<string, string[]>, changes: Change[
   if (g.choices.length === 0 && TRUE_FALSE_PREFIX.test(g.text)) {
     g.text = g.text.replace(TRUE_FALSE_PREFIX, '').trim()
     g.choices = [
-      { letter: 'a', text: 'True', correct: false, marked: false, orig: '' },
-      { letter: 'b', text: 'False', correct: false, marked: false, orig: '' },
+      { letter: 'a', text: 'True', correct: false, marked: false, orig: '', lettered: true },
+      { letter: 'b', text: 'False', correct: false, marked: false, orig: '', lettered: true },
     ]
     changes.push({ kind: 'grading', question: num, message: `${label}: added True and False as the choices.` })
   }

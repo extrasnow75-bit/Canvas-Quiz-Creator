@@ -150,3 +150,72 @@ describe('"Question N" headings with the question on the next line', () => {
     expect(r.parsed.issues.some((i) => /not understood/.test(i.message) && /ZELMAN/.test(i.message))).toBe(true)
   })
 })
+
+describe('text copied out of Canvas', () => {
+  it('reads the student view: header with points, page text, choices with no letters', () => {
+    const r = reformatQuiz(
+      lines(
+        'Flag question: Question 1',
+        'Question 1 2 pts',
+        'Which bone is the longest in the body?',
+        'Group of answer choices',
+        'humerus',
+        '*femur',
+        'tibia',
+        'Flag question: Question 2',
+        'Question 2 1 pts',
+        'Bones store which mineral?',
+        'Group of answer choices',
+        'iron',
+        '*calcium',
+      ),
+    )
+    expect(texts(r)).toEqual([
+      'Points: 2',
+      '1) Which bone is the longest in the body?',
+      'a) humerus',
+      '*b) femur',
+      'c) tibia',
+      'Points: 1',
+      '2) Bones store which mineral?',
+      'a) iron',
+      '*b) calcium',
+    ])
+    expect(r.parsed.issues.filter((i) => i.severity === 'error')).toEqual([])
+    expect(r.changes.some((c) => /Removed text copied from the Canvas page/.test(c.message))).toBe(true)
+    expect(r.changes.filter((c) => c.kind === 'grading' && /had no letters/.test(c.message))).toHaveLength(2)
+  })
+
+  it('uses the results view’s “Correct Answer” label, never “You Answered”', () => {
+    const r = reformatQuiz(lines('Question 1 1 pts', 'Which is a star?', 'You Answered', 'the moon', 'Correct Answer', 'the sun', 'Mars'))
+    expect(texts(r)).toEqual(['Points: 1', '1) Which is a star?', 'a) the moon', '*b) the sun', 'c) Mars'])
+    expect(r.changes.some((c) => c.kind === 'answer' && /Correct Answer/.test(c.message))).toBe(true)
+  })
+
+  it('works out “Question 32 pts” from the question order, and asks for a check', () => {
+    const r = reformatQuiz(lines('Question 1 1 pts', 'First?', '*a) x', 'b) y', 'Question 2 1 pts', 'Second?', '*a) x', 'b) y', 'Question 32 pts', 'Third?', '*a) x', 'b) y'))
+    expect(r.parsed.questions.map((q) => [q.number, q.points])).toEqual([
+      [1, 1],
+      [2, 1],
+      [3, 2],
+    ])
+    expect(r.changes.find((c) => c.kind === 'grading' && /Question 32 pts/.test(c.message))?.message).toMatch(/Check the points/)
+  })
+
+  it('takes points from a “2 pts” line under the header', () => {
+    const r = reformatQuiz(lines('Question 1', '2 pts', 'Explain.', 'Type: E'))
+    expect(r.parsed.questions[0]?.points ?? texts(r)).toBeTruthy()
+    expect(texts(r)[0]).toBe('Points: 2')
+  })
+
+  it('renumbers Canvas question-bank ids', () => {
+    const r = reformatQuiz(lines('48213. Which is a primary color?', '*a) red', 'b) green', '48214. Which is a mammal?', 'a) shark', '*b) whale'))
+    expect(r.parsed.questions.map((q) => q.number)).toEqual([1, 2])
+  })
+
+  it('joins a question that runs on to the next line before lettering choices', () => {
+    const r = reformatQuiz(lines('Question 1 1 pts', 'The longest bone in the', 'body is the:', 'femur', 'tibia'))
+    expect(r.parsed.questions[0].text).toBe('The longest bone in the body is the:')
+    expect(r.parsed.questions[0].answers.map((a) => a.text)).toEqual(['femur', 'tibia'])
+  })
+})
