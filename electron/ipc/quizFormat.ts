@@ -30,10 +30,7 @@
  */
 import type {
   Answer,
-  Category,
   DocLine,
-  Dropdown,
-  FileUploadOptions,
   Issue,
   NumericAnswer,
   ParseResult,
