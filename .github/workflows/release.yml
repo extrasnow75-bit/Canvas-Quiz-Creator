@@ -1,0 +1,350 @@
+# Builds the Windows installer and the two macOS disk images, and attaches all three to one
+# GitHub Release.
+#
+# Triggered by pushing a version tag:
+#
+#     git tag v1.0.0 && git push origin v1.0.0
+#
+# Before tagging, rewrite RELEASE_NOTES.md as the "What's new in vX.Y.Z" list for that version;
+# the release job refuses to publish if the file does not name the tag.
+#
+# A manual run from the Actions tab builds and uploads the installers as workflow artifacts
+# without publishing a release — useful for testing the pipeline itself.
+#
+# A manual run WITH "Existing tag to republish" filled in (e.g. v0.9.1) rebuilds that release's
+# page and installers from the branch you run it on. This is the way to correct a release page
+# after publishing: the page is generated from the workflow and RELEASE_NOTES.md as they were in
+# the tagged commit, so a fix merged afterwards cannot reach an existing release any other way
+# short of deleting the tag and the release and starting again.
+#
+# The Google client secret is not in the repo. It is injected here from the repository secret
+# MAIN_VITE_GOOGLE_CLIENT_SECRET; electron-vite reads MAIN_VITE_* at build time and compiles it
+# into the main-process bundle, never the renderer.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish_tag:
+        description: 'Existing tag to republish (e.g. v0.9.1). Leave empty to build without publishing.'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    strategy:
+      # fail-fast off so a Mac build failing does not cancel a Windows build that is fine; the
+      # release job still needs both, so nothing half-built gets published.
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # vite and electron-vite require ^20.19 || >=22.12. Plain "20" resolves to the latest
+          # 20.x, which clears that floor only just — 22 leaves room.
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      # Before the build, so a broken parser fails the release rather than shipping. These cover
+      # the pure functions: the quiz parser, the reformat rules, the Gemini checks and the Canvas
+      # payloads.
+      - name: Test
+        run: npm test
+
+      # A copy without the Google client ID or secret installs fine and then cannot sign in, which
+      # is the worst way to find out. Stop the release instead.
+      - name: Check Google sign-in is configured
+        shell: bash
+        env:
+          SECRET: ${{ secrets.MAIN_VITE_GOOGLE_CLIENT_SECRET }}
+        run: |
+          if grep -q "REPLACE_WITH_QUIZ_CREATOR_DESKTOP_CLIENT_ID" electron/ipc/googleConfig.ts; then
+            echo "::error file=electron/ipc/googleConfig.ts::Put the Google Desktop app client ID in googleConfig.ts before releasing."
+            exit 1
+          fi
+          if [ -z "$SECRET" ]; then
+            echo "::error::Add the repository secret MAIN_VITE_GOOGLE_CLIENT_SECRET (Settings → Secrets and variables → Actions) before releasing."
+            exit 1
+          fi
+
+      - name: Build installer
+        # `--publish never` is essential: electron-builder detects CI and otherwise tries to
+        # publish the artifacts itself, failing with "GitHub Personal Access Token is not set"
+        # *after* the installer has already been built. Publishing is the release job's work.
+        #
+        # CSC_IDENTITY_AUTO_DISCOVERY=false stops electron-builder hunting the Mac runner's
+        # keychain for a signing certificate it will not find; harmless on Windows.
+        run: npm run build -- --publish never
+        env:
+          MAIN_VITE_GOOGLE_CLIENT_SECRET: ${{ secrets.MAIN_VITE_GOOGLE_CLIENT_SECRET }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.os }}
+          # Only the installers themselves — release/ also holds the unpacked app directory,
+          # which is hundreds of megabytes and of no use to anyone downloading a build. The .exe
+          # glob matches nothing on the Mac runner and the .dmg glob nothing on Windows;
+          # if-no-files-found only fires when neither matches.
+          path: |
+            release/*.exe
+            release/*.dmg
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    # Publish for a tag push, or for a manual run that named a tag to republish. A manual run
+    # with the box left empty stops after building, so the pipeline can still be exercised
+    # without touching a release.
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.publish_tag != ''
+    permissions:
+      contents: write
+    env:
+      # The tag being published. On a tag push that is the tag itself; on a manual run it is
+      # whatever was typed in, and the notes and workflow come from the branch being run —
+      # which is the point of that route.
+      TAG: ${{ inputs.publish_tag || github.ref_name }}
+      # Non-empty only on the republish route, so the guard below can tell the two apart without
+      # interpolating the input into the script.
+      REPUBLISHING: ${{ inputs.publish_tag }}
+
+    steps:
+      # Only for RELEASE_NOTES.md; the installers come from the build job's artifacts.
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: RELEASE_NOTES.md
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Check the change list names this version
+        # RELEASE_NOTES.md is the "What's new" section of the release page: a bulleted list of
+        # what changed, written for the people installing the app. It is rewritten for every
+        # release, so a tag pushed without updating it would publish the previous version's list
+        # under a new heading. Stop here instead; the installers are already built and the tag
+        # can be re-pushed once the file is right.
+        run: |
+          if ! grep -q "What's new in $TAG" RELEASE_NOTES.md; then
+            echo "::error file=RELEASE_NOTES.md::RELEASE_NOTES.md must start with \"## What's new in $TAG\" and list the changes since the previous release."
+            exit 1
+          fi
+
+      - name: Rename installers
+        # electron-builder names the files after the version and arch, which asks the reader to
+        # know what that means. The people installing this are course staff, not developers, so
+        # the filename itself should say which machine it is for. Each glob is expanded once,
+        # before any renaming, so this cannot reprocess its own output.
+        run: |
+          ver="${TAG#v}"
+          cd artifacts
+          for f in *.exe; do
+            mv -- "$f" "Canvas-Quiz-Creator-WINDOWS-$ver.exe"
+          done
+          for f in *.dmg; do
+            case "$f" in
+              *arm64*) arch="APPLE-SILICON" ;;
+              *)       arch="INTEL" ;;
+            esac
+            mv -- "$f" "Canvas-Quiz-Creator-MAC-$arch-$ver.dmg"
+          done
+          ls -1
+          test "$(ls -1 | wc -l)" -eq 3
+
+      - name: Write release notes
+        # Quoted heredoc so the markdown's backticks are not run as command substitution; the
+        # version is substituted afterwards.
+        #
+        # The install steps deliberately describe the warning the reader will see on screen
+        # ("Windows protected your PC") rather than its cause. The audience is course staff, so
+        # "unsigned build" and "SmartScreen" name nothing they can match to their display.
+        run: |
+          cat > notes.md <<'NOTES'
+          ## Download
+
+          **Windows:** [Canvas-Quiz-Creator-WINDOWS-__VER__.exe](https://github.com/__REPO__/releases/download/v__VER__/Canvas-Quiz-Creator-WINDOWS-__VER__.exe)
+
+          **Mac — newer (2020 and later, Apple Silicon):** [Canvas-Quiz-Creator-MAC-APPLE-SILICON-__VER__.dmg](https://github.com/__REPO__/releases/download/v__VER__/Canvas-Quiz-Creator-MAC-APPLE-SILICON-__VER__.dmg)
+
+          **Mac — older (2019 and earlier, Intel):** [Canvas-Quiz-Creator-MAC-INTEL-__VER__.dmg](https://github.com/__REPO__/releases/download/v__VER__/Canvas-Quiz-Creator-MAC-INTEL-__VER__.dmg)
+
+          **If your Mac is only a few years old, take the newer one.** Every Mac sold since late
+          2020 uses Apple Silicon, so that is the right file for most people.
+
+          To be sure: click the Apple menu, then **About This Mac**. A line reading **Chip —
+          Apple M1**, M2, M3 or M4 means the newer file. A line reading **Processor** with Intel
+          in it means the older one.
+
+          The Assets section further down holds the same files. Ignore the two "Source code"
+          links beside them — GitHub adds those to every release automatically. They are not
+          the app.
+
+          NOTES
+          cat RELEASE_NOTES.md >> notes.md
+          cat >> notes.md <<'NOTES'
+
+          ## Installing on Windows
+
+          Download the `.exe` file and double-click it to install.
+
+          Windows will show a blue screen saying **"Windows protected your PC."** Click
+          **More info**, then click **Run anyway**. It appears because this app was built
+          in-house rather than distributed through the Microsoft Store — not because anything is
+          wrong with it. You will see it again each time you install a new version.
+
+          ## Installing on a Mac
+
+          Open the `.dmg` file and drag **Canvas Quiz Creator** into the Applications folder
+          shown beside it.
+
+          The first time you open the app, macOS will refuse it — usually saying the app
+          **"is damaged and can't be opened"** or is from an unidentified developer. The app is
+          fine; macOS says this about anything built in-house rather than through the App Store.
+          To get past it, open **Terminal** (in Applications → Utilities), paste this line, and
+          press Return:
+
+          ```
+          xattr -dr com.apple.quarantine "/Applications/Canvas Quiz Creator.app"
+          ```
+
+          Then open the app normally. You will need to do this once per version you install.
+
+          ## Already have an earlier version?
+
+          **You do not need to uninstall it first.** On Windows, run the installer over the top
+          of it — it finds the existing copy and replaces it. On a Mac, drag the new app into
+          Applications and choose **Replace** when asked. Your Canvas token, Gemini key and
+          Google sign-in are kept either way, so there is nothing to set up again.
+
+          Two things to get right on Windows:
+
+          - **Close Canvas Quiz Creator before you run the installer**, or Windows reports that
+            files are in use and the install fails.
+          - **Accept the install folder the installer offers.** It lets you change it, and
+            choosing a different one leaves two copies installed side by side with no way to
+            tell which you are opening.
+
+          ---
+
+          ## Signing in to Google
+
+          The first time you sign in, Google shows a warning that the app is unverified. Choose
+          **Advanced**, then **Go to Canvas Quiz Creator**. On the next screen, tick every box
+          before choosing Continue. Google asks you to sign in again about once a week; that is
+          expected.
+
+          ---
+
+          Your Canvas token and Gemini key are stored in your operating system's keychain and
+          are only sent to Canvas and to Gemini.
+          NOTES
+          # `|` as the delimiter for the repo, which contains slashes. The download URL is
+          # assembled rather than looked up: GitHub serves release assets at a predictable path,
+          # and the rename step above fixes the filename, so the two agree by construction.
+          sed -i "s/__VER__/${TAG#v}/g; s|__REPO__|${GITHUB_REPOSITORY}|g" notes.md
+          cat notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # A hyphen in the tag means a pre-release under semver (v0.9.0-rc.1), so mark it as
+          # one. Otherwise GitHub would present a release candidate as the current release and
+          # point everybody at it.
+          prerelease=""
+          case "$TAG" in
+            *-*) prerelease="--prerelease" ;;
+          esac
+
+          # The republish box says "Existing tag", and this is what holds it to that.
+          #
+          # Without it, a typo publishes a real release for a tag that never existed: `gh release
+          # create` creates the tag as well, at the head of the default branch, carrying installers
+          # built from whichever branch the run started on. That is a public release nobody meant
+          # to make, and it is the kind of mistake this route exists to invite, since its whole
+          # purpose is to let someone re-run a release by typing its name into a box.
+          #
+          # A tag push cannot reach this, because the tag it was triggered by necessarily exists.
+          # Asked of GitHub rather than of the checkout: actions/checkout fetches no tags at
+          # depth 1, so a local `git rev-parse` would report every tag missing, including the
+          # real ones.
+          # $REPUBLISHING, never the input interpolated straight into this script. A template
+          # expansion is pasted in before the shell ever sees it, so a tag name containing shell
+          # metacharacters would run as code here — in a job holding
+          # MAIN_VITE_GOOGLE_CLIENT_SECRET. Through the environment the value stays data. Every
+          # other use of the tag in this file already goes through $TAG for the same reason.
+          #
+          # This comment used to spell that syntax out literally, and doing so broke every
+          # release from v0.9.2 onward. GitHub scans a run: block for template expansions and
+          # does not care that the line is a shell comment; it found the empty one written here
+          # as an illustration, reported "An expression was expected", and refused the whole
+          # file. A rejected file has no jobs to fail, so the Actions page showed runs lasting
+          # -1s, and it created one on every push because it could not read the triggers either.
+          # Never write that two-brace syntax inside a run: block, comment or not.
+          if [ -n "$REPUBLISHING" ] && \
+             ! gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::No tag named $TAG exists. Republishing only works on a tag that is already pushed."
+            exit 1
+          fi
+
+          # Create the release, or fill in one that already exists.
+          #
+          # A tag does not only arrive by `git push origin v0.9.0`. Creating it through GitHub's
+          # Releases page — the only route available to someone without a local clone — makes the
+          # release first and the tag with it, and `gh release create` then fails on a release
+          # that is already there, after both installers have been built. So: create it if it is
+          # missing, and otherwise set the notes and attach the installers to what is there.
+          #
+          # The release is created empty and the installers attached afterwards, so that both
+          # routes attach them the same way.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — updating it."
+            gh release edit "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Canvas Quiz Creator $TAG" \
+              --notes-file notes.md \
+              ${prerelease:+--prerelease}
+          else
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Canvas Quiz Creator $TAG" \
+              --notes-file notes.md \
+              $prerelease
+          fi
+
+          # The Assets list cannot be reordered, so do not spend another release trying.
+          #
+          # Nearly everyone here is on Windows and it would be good to have the .exe on top.
+          # GitHub sorts release assets alphabetically by filename, which puts both Macs above
+          # it. This was tested directly on v0.9.1: the .exe was uploaded first and given the
+          # lowest asset id, and GitHub still listed it third. Only a rename would change the
+          # order, and a sort key like "1-" in a filename costs more confusion among the course
+          # staff downloading these than the ordering is worth.
+          #
+          # What actually leads people to the right file is the Download section at the top of
+          # the notes, which lists Windows first and links each file directly.
+          #
+          # --clobber so re-running the workflow on the same tag replaces the assets rather than
+          # failing on a name that is already taken.
+          gh release upload "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber \
+            artifacts/*

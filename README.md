@@ -121,6 +121,23 @@ In the Google Cloud Console project used for the eCampus desktop apps:
 
    See the comments in `googleConfig.ts` for the reasons and the alternative.
 
+## Releasing
+
+`.github/workflows/release.yml` builds the Windows installer and the two Mac disk images on
+GitHub and publishes them on the Releases page. Copied from Canvas Rubric Creator.
+
+Before the first release:
+1. Put the Google Desktop app client ID in `electron/ipc/googleConfig.ts`.
+2. Add the client secret as the repository secret **MAIN_VITE_GOOGLE_CLIENT_SECRET**
+   (Settings → Secrets and variables → Actions). The release stops if either is missing.
+
+For each release:
+1. Set `version` in `package.json` (for example `0.1.0`).
+2. Rewrite `RELEASE_NOTES.md`, starting with `## What's new in v0.1.0`.
+3. Merge to `main`, then push the tag: `git tag v0.1.0 && git push origin v0.1.0`.
+
+A manual run from the Actions tab builds the installers without publishing, to test the pipeline.
+
 ## Tests
 
 ```
