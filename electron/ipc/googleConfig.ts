@@ -16,7 +16,7 @@
  * The client ID is a PUBLIC identifier and is safe to commit.
  */
 export const GOOGLE_CLIENT_ID =
-  process.env.GOOGLE_CLIENT_ID ?? 'REPLACE_WITH_QUIZ_CREATOR_DESKTOP_CLIENT_ID'
+  process.env.GOOGLE_CLIENT_ID ?? '1085000809714-0g2p5a9ught003j9ssg9tn1p587cske3.apps.googleusercontent.com'
 
 /**
  * Google requires a client_secret on the token exchange even for "Desktop app" clients using
