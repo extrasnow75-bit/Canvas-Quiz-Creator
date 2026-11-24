@@ -86,6 +86,10 @@ const CANVAS_HEADER_PTS = /^question\s+(\d{1,4})\s+(\d+(?:\.\d+)?)\s*(?:pts?\.?|
 const CANVAS_HEADER_COMPACT = /^question\s+(\d{2,6})\s*(?:pts?\.?|points?)$/i
 /** "48213. Prompt": a Canvas question-bank id in place of a question number. */
 const CANVAS_BANK_ID = /^(\d{5,})\.\s+(.+)$/
+/** "=== End of Quiz ===": closes the quiz, so nothing after it is read as an unlettered choice. */
+const QUIZ_END = /^=+\s*end\s+of\s+quiz\s*=+$/i
+/** "####" under a question copied from Canvas: the space for a written answer, so an essay. */
+const ESSAY_SPACE = /^#{3,}$/
 /** A question that runs on to the next line: it ends on a word that cannot end a sentence. */
 const RUNS_ON = /\b(?:be|on|in|of|to|that|which|when|with|and|or|not|may|the|a|an|is|are|was|were)$/i
 
@@ -116,15 +120,21 @@ interface Source {
   orig: string
   bold: boolean
   highlighted: boolean
+  underlined: boolean
   heading: boolean
   headingLevel?: number
 }
+
+/** How a choice stood out in the original, if it did. Bold is named first when it is both. */
+type Mark = 'bold' | 'highlighted' | 'underlined'
+const markOf = (l: { bold: boolean; highlighted: boolean; underlined: boolean }): Mark | null =>
+  l.bold ? 'bold' : l.highlighted ? 'highlighted' : l.underlined ? 'underlined' : null
 
 interface Choice {
   letter: string
   text: string
   correct: boolean
-  marked: boolean // bold or highlighted in the original
+  mark: Mark | null
   orig: string
   /** The original gave it a letter. False for choices Canvas printed without one. */
   lettered: boolean
@@ -144,6 +154,15 @@ interface Group {
   key: string[] | null
   /** Lines removed from this question because they were understood (answer notes). */
   absorbed: number
+  /**
+   * The question itself is highlighted (or underlined). Such a highlight is someone calling
+   * attention to the whole question, so a highlight on its choices does not mark an answer.
+   */
+  questionHighlighted: boolean
+  /** The answer was taken from formatting alone: shown as a warning on the question. */
+  guessed: string | null
+  /** Several choices stood out and none had an asterisk: replaces the parser's "no answer" error. */
+  unclear: string | null
   /** Copied from Canvas ("Question 3" header, bank id): its choices may have no letters. */
   canvasStyle: boolean
 }
@@ -157,7 +176,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
 
   // Pass 1: lines, and the answer key at the end if there is one.
   let src: Source[] = input
-    .map((l) => ({ text: clean(l.text), orig: clean(l.text), bold: l.bold, highlighted: !!l.highlighted, heading: l.heading, headingLevel: l.headingLevel }))
+    .map((l) => ({ text: clean(l.text), orig: clean(l.text), bold: l.bold, highlighted: !!l.highlighted, underlined: !!l.underlined, heading: l.heading, headingLevel: l.headingLevel }))
     .filter((l) => l.text !== '')
 
   const globalKey = new Map<string, string[]>()
@@ -200,7 +219,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
   let lastNumber = 0
   /** A "Correct Answer" label was just seen: the next choice is the correct one. */
   let correctNext = false
-  const startQuestion = (number: string, text: string, orig: string, canvasStyle: boolean): Group => {
+  const startQuestion = (number: string, text: string, orig: string, canvasStyle: boolean, highlighted = false): Group => {
     const g: Group = {
       points: pendingPoints,
       type: pendingType,
@@ -213,6 +232,9 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
       key: null,
       absorbed: 0,
       canvasStyle,
+      questionHighlighted: highlighted,
+      guessed: null,
+      unclear: null,
     }
     groups.push(g)
     pendingPoints = null
@@ -266,7 +288,15 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
     const bank = l.text.match(CANVAS_BANK_ID)
     if (bank && !l.heading) {
       noteFormat('Replaced Canvas question-bank ids with question numbers')
-      current = startQuestion(String(lastNumber + 1), bank[2].trim(), '', true)
+      current = startQuestion(String(lastNumber + 1), bank[2].trim(), '', true, l.highlighted || l.underlined)
+      continue
+    }
+
+    if (QUIZ_END.test(l.text)) {
+      if (current) {
+        current.trailing.push(l)
+        current.canvasStyle = false
+      } else preamble.push(l)
       continue
     }
 
@@ -300,7 +330,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
         changes.push({ kind: 'grading', question: null, message: `Question ${number}: moved "${suffix[0].trim()}" from the question to a Points line.` })
       }
       // "Question 3" (the word, not "3)") is how Canvas prints questions: its choices may have no letters.
-      current = startQuestion(number, text, l.orig, q[1] !== undefined)
+      current = startQuestion(number, text, l.orig, q[1] !== undefined, l.highlighted || l.underlined)
       continue
     }
     if (!current) {
@@ -330,6 +360,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
     if (current.text === '' && current.choices.length === 0 && current.body.length === 0) {
       current.text = l.text
       current.questionOrig = ''
+      current.questionHighlighted = l.highlighted || l.underlined
       continue
     }
     // A question copied from Canvas: the lines after it are its choices, which Canvas prints
@@ -337,6 +368,11 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
     if (current.canvasStyle && current.text !== '' && !l.heading && current.body.length === 0 && current.choices.every((c) => !c.lettered)) {
       if (current.choices.length === 0 && RUNS_ON.test(current.text) && !l.text.startsWith('*')) {
         current.text = `${current.text} ${l.text}`
+        continue
+      }
+      if (ESSAY_SPACE.test(l.text) && current.choices.length === 0) {
+        if (!current.type) current.type = { text: 'Type: E', orig: '' }
+        noteFormat('Made questions with a "####" answer space essay questions')
         continue
       }
       const starred = l.text.startsWith('*')
@@ -348,7 +384,7 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
       if (current.choices.length === 0) {
         changes.push({ kind: 'grading', question: Number(current.number) || null, message: `Question ${current.number}: the choices copied from Canvas had no letters, so they were lettered. Check they are the choices, not part of the question.` })
       }
-      current.choices.push({ letter, text, correct, marked: l.bold || l.highlighted, orig: '', lettered: false })
+      current.choices.push({ letter, text, correct, mark: markOf(l), orig: '', lettered: false })
       continue
     }
 
@@ -383,6 +419,16 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
   for (const [what, n] of formatCounts) changes.push({ kind: 'format', question: null, message: `${what} (${n} ${n === 1 ? 'line' : 'lines'}).` })
 
   const parsed = parseQuiz(lines.map((l) => ({ text: l.text, bold: false, bullet: false, heading: l.heading })))
+  for (const g of groups) {
+    if (!g.guessed && !g.unclear) continue
+    const qi = parsed.questions.findIndex((q) => String(q.number) === g.number)
+    if (qi === -1) continue
+    if (g.guessed) parsed.issues.push({ severity: 'warning', message: `The app ${g.guessed}`, line: parsed.questions[qi].line, question: qi })
+    if (g.unclear) {
+      const noAnswer = parsed.issues.find((i) => i.question === qi && i.severity === 'error' && /^No answer is marked correct/.test(i.message))
+      if (noAnswer) noAnswer.message = g.unclear
+    }
+  }
   return { lines, changes: sortChanges(changes), parsed }
 }
 
@@ -451,7 +497,7 @@ function parseChoice(l: Source): Choice | null {
     correct = true
     text = text.replace(CORRECT_SUFFIX, '').trim()
   }
-  return { letter, text, correct, marked: l.bold || l.highlighted, orig: l.orig, lettered: true }
+  return { letter, text, correct, mark: markOf(l), orig: l.orig, lettered: true }
 }
 
 /**
@@ -490,8 +536,8 @@ function fixAnswers(g: Group, globalKey: Map<string, string[]>, changes: Change[
   if (g.choices.length === 0 && TRUE_FALSE_PREFIX.test(g.text)) {
     g.text = g.text.replace(TRUE_FALSE_PREFIX, '').trim()
     g.choices = [
-      { letter: 'a', text: 'True', correct: false, marked: false, orig: '', lettered: true },
-      { letter: 'b', text: 'False', correct: false, marked: false, orig: '', lettered: true },
+      { letter: 'a', text: 'True', correct: false, mark: null, orig: '', lettered: true },
+      { letter: 'b', text: 'False', correct: false, mark: null, orig: '', lettered: true },
     ]
     changes.push({ kind: 'grading', question: num, message: `${label}: added True and False as the choices.` })
   }
@@ -515,11 +561,22 @@ function fixAnswers(g: Group, globalKey: Map<string, string[]>, changes: Change[
       targets.forEach((c) => (c.correct = true))
       changes.push({ kind: 'answer', question: num, message: `${label}: marked ${describe(targets)} correct, from the answer key.` })
     }
-  } else if (starred.length === 0 && g.choices.length > 0) {
-    const marked = g.choices.filter((c) => c.marked)
-    if (marked.length > 0 && marked.length < g.choices.length) {
-      marked.forEach((c) => (c.correct = true))
-      changes.push({ kind: 'answer', question: num, message: `${label}: marked ${describe(marked)} correct, because it was bold or highlighted.` })
+  } else if (starred.length === 0 && g.choices.length > 1) {
+    // Formatting is a weak signal: people highlight to get attention as often as to mark answers.
+    // So it is read only when exactly one choice stands out, never when the question is
+    // highlighted too, and the guess is always shown for a person to check. Bold still counts
+    // when the question is highlighted, since a highlight does not make text bold.
+    const standOut = g.choices.filter((c) => c.mark && !(g.questionHighlighted && c.mark !== 'bold'))
+    const how = (cs: Choice[]) => [...new Set(cs.map((c) => c.mark!))].join(' or ')
+    if (standOut.length === 1) {
+      const [c] = standOut
+      c.correct = true
+      g.guessed = `marked ${describe([c])} correct, because it was the only ${how([c])} choice and no choice had an asterisk. Check this is the right answer.`
+      changes.push({ kind: 'answer', question: num, message: `${label}: ${g.guessed}` })
+    } else if (standOut.length > 1 && standOut.length < g.choices.length) {
+      const names = standOut.map((c) => `${c.letter})`)
+      const list = `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+      g.unclear = `${list} are ${how(standOut)}. Put * before the correct answer(s).`
     }
   } else if (starred.some((c) => !c.orig.startsWith('*'))) {
     changes.push({ kind: 'format', question: num, message: `${label}: moved the asterisk to before the letter of ${describe(starred.filter((c) => !c.orig.startsWith('*')))}.` })

@@ -92,3 +92,32 @@ export function problemsOf(title: string | null, parsed: ParseResult, several: b
       return `${prefix}${q ? `Question ${q.number ?? i.question! + 1}: ` : ''}${i.message}`
     })
 }
+
+/**
+ * Answers the app took from formatting alone, read back from the "Check:" notes at the top of a
+ * Reformatted questions tab, and shown as a warning on each question.
+ *
+ * In the tab itself a guessed answer is an ordinary "*c)" like any other, so without this the
+ * guess would stop looking like one the moment the app read the tab back. The warning stays until
+ * a person deletes its "Check:" line, which is what checking it means.
+ */
+const GUESS_NOTE = /^Check:\s*(?:(.*?) · )?Question (\d+): (marked .+ correct, because it was the only .+ choice and no choice had an asterisk\..*)$/
+
+export function addGuessWarnings(lines: DocLine[], quizzes: Array<{ title: string | null; result: ParseResult }>): void {
+  for (const l of lines) {
+    if (!l.heading) continue
+    const m = l.text.trim().match(GUESS_NOTE)
+    if (!m) continue
+    const [, title, number, what] = m
+    const quiz = title ? quizzes.find((q) => q.title === title) : quizzes.length === 1 ? quizzes[0] : undefined
+    if (!quiz) continue
+    const qi = quiz.result.questions.findIndex((q) => String(q.number) === number)
+    if (qi === -1) continue
+    quiz.result.issues.push({
+      severity: 'warning',
+      message: `When the app tidied this Doc, it ${what} When you have, delete the “Check:” line about it at the top of the tab.`,
+      line: quiz.result.questions[qi].line,
+      question: qi,
+    })
+  }
+}

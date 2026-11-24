@@ -108,8 +108,10 @@ export interface DocLine {
   text: string
   /** The line is bold, apart from at most a choice letter like "b)". */
   bold: boolean
-  /** The same, for a highlight (background colour) or underline. Optional: plain text has none. */
+  /** The same, for a highlight (background colour). Optional: plain text has none. */
   highlighted?: boolean
+  /** The same, for an underline. Optional: plain text has none. */
+  underlined?: boolean
   /** The line was a bulleted (not numbered) list item in the document. */
   bullet: boolean
   /** The paragraph is a heading (Title, Heading 1–6): a section title, never quiz content. */

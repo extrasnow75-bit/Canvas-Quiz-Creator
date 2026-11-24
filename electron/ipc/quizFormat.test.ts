@@ -287,3 +287,11 @@ describe('questions in another format are problems, not notes', () => {
     expect(errors(r).some((i) => /not in the template format/.test(i.message))).toBe(true)
   })
 })
+
+describe('the end-of-quiz line', () => {
+  it('is read as the end of the quiz, with no warning', () => {
+    const r = parseQuiz(['Points: 1', '1) Pick', '*a) x', 'b) y', '=== End of Quiz ==='])
+    expect(r.issues).toEqual([])
+    expect(r.questions[0].answers.length).toBe(2)
+  })
+})

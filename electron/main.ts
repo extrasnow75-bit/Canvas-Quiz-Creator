@@ -22,8 +22,8 @@ import {
   describeDriveFile,
   type ListFilesArgs,
 } from './ipc/googleDrive'
-import { reformatDocument, problemsOf, type DocumentFix } from './ipc/docReformat'
-import { addTabRequest, clearTabRequest, fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle, GEMINI_TAB_TITLE, type HeaderNotes } from './ipc/docsWrite'
+import { reformatDocument, problemsOf, addGuessWarnings, type DocumentFix } from './ipc/docReformat'
+import { addTabRequest, clearTabRequest, fillTabRequests, isAppHeaderLine, newestAppTab, stampFor, tabUrl, uniqueTabTitle, GEMINI_TAB_TITLE, type HeaderNotes } from './ipc/docsWrite'
 import type { FixedLine as WrittenLine } from './ipc/reformat'
 import type { FixedLine, ReformatResult as RuleResult } from './ipc/reformat'
 import { docToLines, listTabs, type DocsDocument } from './ipc/docLines'
@@ -168,6 +168,11 @@ ipcMain.handle('credentials:geminiKeyStatus', (): CredentialStatus => geminiKeyS
 
 /** Hosts approved in the native dialog during this run. Every launch asks again for a new one. */
 const approvedHosts = new Set<string>()
+/**
+ * The site the app fills in itself (DEFAULT_SITE in courseFilter.ts). The dialog guards against a
+ * mistyped or planted address, which this is not, so it is never asked about.
+ */
+const BUILT_IN_HOST = 'boisestatecanvas.instructure.com'
 let confirmOpen = false
 
 /**
@@ -212,7 +217,7 @@ ipcMain.handle('canvas:listCourses', async (e, args: { site: string }) => {
   const host = new URL(origin).host
   const current = savedOrigin()
   const currentHost = current ? new URL(current).host : undefined
-  if (host !== currentHost && !approvedHosts.has(host)) {
+  if (host !== currentHost && host !== BUILT_IN_HOST && !approvedHosts.has(host)) {
     if (!(await confirmCanvasHost(windowFor(e), host))) {
       return { ok: false as const, message: 'Cancelled. No courses were loaded.' }
     }
@@ -439,7 +444,9 @@ async function readQuizzes(args: { fileId: string; tabId?: string; refresh?: boo
   }
   const { doc } = lastDoc
   const tabs = listTabs(doc)
-  const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : tabs[0]?.id
+  // With no tab asked for, open the newest tab the app wrote: the fixed questions, not the original.
+  const newest = args.tabId ? null : newestAppTab(tabs, (id) => docToLines(doc, id).slice(0, 5).filter((l) => l.heading).map((l) => l.text))
+  const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : newest?.id ?? tabs[0]?.id
   const lines = docToLines(doc, tabId)
   if (lines.length > MAX_DOC_LINES) {
     throw new Error(`This tab is too long for the app to read (${lines.length.toLocaleString()} lines). Split the questions into smaller Docs or tabs, then try again.`)
@@ -452,12 +459,13 @@ async function readQuizzes(args: { fileId: string; tabId?: string; refresh?: boo
     const result = parseQuiz(q.source)
     return { index: i, title: q.title, lines: q.source, result, fixPreview: previewFixes(q.title, result, q.result, several) }
   })
-  return { doc, tabs, tabId: tabId ?? null, trial, quizzes, fingerprint: `${tabId}|${trial.split.level}|${fingerprintOf(quizzes)}` }
+  addGuessWarnings(lines, quizzes)
+  return { doc, tabs, tabId: tabId ?? null, openedNewest: newest?.title ?? null, trial, quizzes, fingerprint: `${tabId}|${trial.split.level}|${fingerprintOf(quizzes)}` }
 }
 
 ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string; refresh?: boolean; level?: number | null }) => {
   try {
-    const { doc, tabs, tabId, trial, quizzes, fingerprint } = await readQuizzes(args)
+    const { doc, tabs, tabId, openedNewest, trial, quizzes, fingerprint } = await readQuizzes(args)
     shownQuizzes.set(args.fileId, fingerprint)
 
     let manualEditAt: string | null = null
@@ -471,6 +479,7 @@ ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string
       title: doc.title ?? '',
       tabs,
       tabId,
+      openedNewest,
       level: trial.split.level,
       levels: trial.split.levels,
       quizzes,

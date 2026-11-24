@@ -69,7 +69,7 @@ function contentOf(line: string): string[] {
 
 export function fallbackPrompt(source: DocLine[]): string {
   const text = source
-    .map((l, i) => `${i + 1}: ${l.text}${l.bold || l.highlighted ? '   [this line is bold or highlighted]' : ''}`)
+    .map((l, i) => `${i + 1}: ${l.text}${l.bold || l.highlighted || l.underlined ? '   [this line is bold or highlighted]' : ''}`)
     .join('\n')
   return `You are reformatting quiz questions a faculty member wrote into a fixed template.
 ${TEMPLATE_RULES}
@@ -161,7 +161,7 @@ export function checkFallback(source: DocLine[], ruleBased: ReformatResult, aiLi
     for (const d of q.dropdowns) for (const o of d.options) if (o.correct) ruleCorrect.add(words(o.text))
   }
   for (const l of source) {
-    if (l.bold || l.highlighted || /\*/.test(l.text) || /\(correct\)|\[correct\]/i.test(l.text)) {
+    if (l.bold || l.highlighted || l.underlined || /\*/.test(l.text) || /\(correct\)|\[correct\]/i.test(l.text)) {
       const w = words(l.text.replace(/^\*?\s*\(?[a-z][).:]\s*/i, '').replace(/\*|\((?:correct|answer)\)|\[(?:correct|answer)\]/gi, ''))
       if (w) ruleCorrect.add(w)
     }

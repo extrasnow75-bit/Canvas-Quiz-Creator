@@ -229,6 +229,12 @@ export function parseQuiz(input: Array<DocLine | string>): ParseResult {
       return
     }
 
+    // "=== End of Quiz ===" closes a quiz in the eCampus template: nothing to read, nothing wrong.
+    if (/^=+\s*end\s+of\s+quiz\s*=+$/i.test(text)) {
+      finish()
+      return
+    }
+
     const pointsMatch = text.match(POINTS_RE)
     if (pointsMatch) {
       if (pending.points) issue('warning', 'Two Points lines in a row. The second one is used.', i, null)

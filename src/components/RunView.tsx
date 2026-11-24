@@ -206,7 +206,7 @@ function Row({ quiz, status, blueprint, course }: { quiz: RunQuiz; status: Cours
           <Clock className="w-5 h-5 text-gray-700 flex-shrink-0" aria-hidden="true" />
           <div className="flex-1 min-w-0">
             {name}
-            <p className="m-0 text-xs text-gray-700">Waiting.{blueprint ? ' Blueprint course: associated courses get it at the next sync.' : ''}</p>
+            <p className="m-0 text-xs text-gray-700">Waiting.{blueprint ? ' Sandbox course: the courses linked to it get the quiz at its next sync.' : ''}</p>
           </div>
         </div>
       )

@@ -276,7 +276,7 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
                         <b className="block text-[13.5px] text-gray-900">{c.name}</b>
                         {c.code && <small className="text-xs text-gray-700">{c.code}</small>}
                       </span>
-                      {c.blueprint && <span className="text-[10.5px] font-black rounded-full px-2 py-0.5 bg-purple-100 text-purple-900">BLUEPRINT</span>}
+                      {c.blueprint && <span className="text-[10.5px] font-black rounded-full px-2 py-0.5 bg-purple-100 text-purple-900" title="Sandbox course, also known as a Master course or a Blueprint course">SANDBOX COURSE</span>}
                       {c.ended && <span className="text-[10.5px] font-black rounded-full px-2 py-0.5 bg-gray-100 text-gray-700">ENDED</span>}
                       <span className={`text-[10.5px] font-black rounded-full px-2 py-0.5 flex-shrink-0 ${ROLE_STYLE[c.role]}`}>
                         {c.roleLabel || ROLE_LABEL[c.role]}
@@ -293,8 +293,8 @@ export function MultiCoursePicker({ selected, onChange, site, onSiteChange, onTo
         <div className="mt-2.5 flex items-start gap-2.5 p-3 bg-amber-50 border-2 border-amber-300 rounded-xl">
           <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-700" aria-hidden="true" />
           <p className="text-[12.5px] text-amber-900 m-0">
-            <b className="text-gray-900">A Blueprint course is ticked.</b> Its associated courses get the quiz at the next Blueprint
-            sync. Tick those courses here as well and they would end up with two copies.
+            <b className="text-gray-900">A Sandbox course is ticked</b> (also known as a Master course or a Blueprint course). The
+            courses linked to it get the quiz at its next sync. Tick those courses here as well and they would end up with two copies.
           </p>
         </div>
       )}

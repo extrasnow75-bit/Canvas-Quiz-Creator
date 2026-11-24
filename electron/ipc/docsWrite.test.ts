@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle, clearTabRequest } from './docsWrite'
+import { fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle, clearTabRequest, newestAppTab } from './docsWrite'
 import { docToLines, type DocsDocument } from './docLines'
 import { reformatQuiz } from './reformat'
 
@@ -103,5 +103,32 @@ describe('the Revised by Gemini tab', () => {
     const hl = (requests as any[]).filter((q) => q.updateTextStyle?.textStyle?.backgroundColor)
     expect(hl).toHaveLength(1)
     expect(hl[0].updateTextStyle.textStyle.backgroundColor.color.rgbColor).toEqual({ red: 0.91, green: 0.86, blue: 1 })
+  })
+})
+
+describe('the tab a Doc opens on', () => {
+  const tabs = [
+    { id: 't.0', title: 'Tab 1' },
+    { id: 't.1', title: 'Revised by Gemini' },
+    { id: 't.2', title: 'Reformatted questions' },
+    { id: 't.3', title: 'Reformatted questions 2' },
+  ]
+  const headers: Record<string, string[]> = {
+    't.0': ['POLS 101 Quizzes'],
+    't.1': ['Revised by Gemini — Nov 23, 2026 at 9:05 AM'],
+    't.2': ['Reformatted questions — Nov 22, 2026 at 3:15 PM'],
+    't.3': ['Reformatted questions — Nov 23, 2026 at 8:40 AM'],
+  }
+
+  it('is the newest tab the app wrote, by its time stamp rather than its place', () => {
+    expect(newestAppTab(tabs, (id) => headers[id])).toEqual({ id: 't.1', title: 'Revised by Gemini' })
+  })
+
+  it('is none when the app wrote no tab, so the first tab is read', () => {
+    expect(newestAppTab([tabs[0], { id: 't.9', title: 'Reformatted questions (my notes)' }], (id) => headers[id] ?? [])).toBeNull()
+  })
+
+  it('falls back to the later tab when a stamp cannot be read', () => {
+    expect(newestAppTab(tabs.slice(2), () => ['Reformatted questions'])).toEqual({ id: 't.3', title: 'Reformatted questions 2' })
   })
 })

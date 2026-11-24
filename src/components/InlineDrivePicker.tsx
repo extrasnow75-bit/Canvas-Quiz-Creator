@@ -149,7 +149,12 @@ export function InlineDrivePicker({ onPick, busy }: { onPick(file: { fileId: str
               <button
                 key={f.id}
                 onClick={() => {
-                  setFolders([...folders, { id: f.id, name: f.name }])
+                  // A search outranks a folder in the request above, so opening a folder found by
+                  // searching used to show the same search results again. Opening a folder leaves search.
+                  // From search results the folder's path is unknown, so it starts a fresh trail.
+                  setFolders(search ? [{ id: f.id, name: f.name }] : [...folders, { id: f.id, name: f.name }])
+                  setQuery('')
+                  setSearch('')
                   listRef.current?.focus()
                 }}
                 className="w-full flex items-center gap-3 px-3.5 py-2.5 border-b border-gray-100 text-left hover:bg-blue-50 focus:outline-none focus-visible:bg-blue-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"

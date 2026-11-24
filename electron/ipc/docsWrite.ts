@@ -156,3 +156,30 @@ export function addTabRequest(title: string): object {
 export function tabUrl(fileId: string, tabId?: string | null): string {
   return `https://docs.google.com/document/d/${fileId}/edit${tabId ? `?tab=${encodeURIComponent(tabId)}` : ''}`
 }
+
+/**
+ * The newest tab this app wrote in a Doc ("Reformatted questions", "Reformatted questions 2",
+ * "Revised by Gemini"), or null when it wrote none.
+ *
+ * Opening a Doc used to read its first tab, which is the faculty member's original: someone
+ * coming back to a Doc they had already fixed saw its problems again and could launch the unfixed
+ * questions. "Newest" goes by the time stamp each tab carries in its header, because the Gemini
+ * tab is rewritten in place and so its position says nothing about when it was written. A tab
+ * whose stamp cannot be read counts by its position, after any stamped tab.
+ */
+export function newestAppTab(
+  tabs: Array<{ id: string; title: string }>,
+  headerOf: (tabId: string) => string[],
+): { id: string; title: string } | null {
+  const ours = (t: string) => new RegExp(`^(?:${TAB_BASE_TITLE}(?: \\d+)?|${GEMINI_TAB_TITLE})$`, 'i').test(t.trim())
+  let best: { id: string; title: string; when: number; order: number } | null = null
+  tabs.forEach((tab, order) => {
+    if (!ours(tab.title)) return
+    const line = headerOf(tab.id).find((l) => l.includes(' — '))
+    const stamp = line?.split(' — ')[1]?.replace(/[  ]/g, ' ').replace(' at ', ' ')
+    const parsed = stamp ? Date.parse(stamp) : NaN
+    const when = Number.isNaN(parsed) ? -1 : parsed
+    if (!best || when > best.when || (when === best.when && order > best.order)) best = { id: tab.id, title: tab.title, when, order }
+  })
+  return best ? { id: (best as { id: string }).id, title: (best as { title: string }).title } : null
+}

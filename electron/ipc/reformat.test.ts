@@ -25,8 +25,39 @@ describe('the code reformatter', () => {
     const r = reformatQuiz(lines('Points: 1', '1. Largest planet?', 'a. Mars', line('b. Jupiter', { bold: true }), 'c. Venus'))
     expect(texts(r)).toContain('*b) Jupiter')
     expect(r.changes[0]).toMatchObject({ kind: 'answer', question: 1 })
-    expect(r.changes[0].message).toMatch(/bold or highlighted/)
+    expect(r.changes[0].message).toBe('Question 1: marked b) Jupiter correct, because it was the only bold choice and no choice had an asterisk. Check this is the right answer.')
     expect(errors(r)).toEqual([])
+    // The guess is shown on the question too, not only in the list of changes.
+    expect(r.parsed.issues).toContainEqual(expect.objectContaining({ severity: 'warning', question: 0 }))
+  })
+
+  it('does not guess when several choices are highlighted, and says which', () => {
+    const r = reformatQuiz(lines('Points: 1', '1) Pick', 'a) w', line('b) x', { highlighted: true }), line('c) y', { highlighted: true }), 'd) z'))
+    expect(texts(r)).not.toContain('*b) x')
+    expect(errors(r).map((e) => e.message)).toEqual(['b) and c) are highlighted. Put * before the correct answer(s).'])
+  })
+
+  it('ignores a highlight that covers the question as well as a choice', () => {
+    // Someone highlighted the question and its first choice to get attention.
+    const r = reformatQuiz(lines('Points: 1', line('1) Pick', { highlighted: true }), line('a) x', { highlighted: true }), 'b) y'))
+    expect(texts(r)).toEqual(['Points: 1', '1) Pick', 'a) x', 'b) y'])
+    expect(errors(r)[0].message).toMatch(/No answer is marked correct/)
+  })
+
+  it('still reads a bold choice under a highlighted question', () => {
+    const r = reformatQuiz(lines('Points: 1', line('1) Pick', { highlighted: true }), 'a) x', line('b) y', { bold: true, highlighted: true })))
+    expect(texts(r)).toContain('*b) y')
+  })
+
+  it('ignores a highlight when a choice has an asterisk', () => {
+    const r = reformatQuiz(lines('Points: 1', '1) Pick', '*a) x', line('b) y', { highlighted: true })))
+    expect(texts(r)).toEqual(['Points: 1', '1) Pick', '*a) x', 'b) y'])
+    expect(r.changes).toEqual([])
+  })
+
+  it('calls an underline an underline', () => {
+    const r = reformatQuiz(lines('Points: 1', '1) Pick', 'a) x', line('b) y', { underlined: true })))
+    expect(r.changes[0].message).toMatch(/the only underlined choice/)
   })
 
   it('marks a highlighted choice correct', () => {

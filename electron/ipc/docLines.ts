@@ -18,7 +18,7 @@ import type { DocLine } from './quizModel'
 // The parts of the Docs API response this reads. Everything else is ignored.
 interface TextRun {
   content?: string
-  textStyle?: { bold?: boolean; underline?: boolean; backgroundColor?: { color?: unknown } }
+  textStyle?: { bold?: boolean; underline?: boolean; backgroundColor?: { color?: { rgbColor?: { red?: number; green?: number; blue?: number } } } }
 }
 interface ParagraphElement {
   textRun?: TextRun
@@ -65,6 +65,22 @@ export interface TabInfo {
 }
 
 /** Every tab in the document, in order, children after their parent. */
+/**
+ * A highlight colour that means something in eCampus's own workflow, not an answer, so it never
+ * marks a choice correct. Light green is QA's "ready for Canvas" mark (Blueprint Tools), and
+ * purple is how this app's own "Revised by Gemini" tab, and other tools, mark changed lines.
+ * Google's palette leaves no doubt between these and yellow: green has more green than red or
+ * blue, purple more blue than green with at least as much red.
+ */
+export function isWorkflowColor(rgb?: { red?: number; green?: number; blue?: number }): boolean {
+  const r = rgb?.red ?? 0
+  const g = rgb?.green ?? 0
+  const b = rgb?.blue ?? 0
+  const green = g > r + 0.04 && g > b + 0.04
+  const purple = b > g + 0.04 && r >= g
+  return green || purple
+}
+
 export function listTabs(doc: DocsDocument): TabInfo[] {
   const out: TabInfo[] = []
   const walk = (tabs: DocsTab[] | undefined, depth: number) => {
@@ -190,20 +206,21 @@ function linesFromBody(content: StructuralElement[] | undefined, lists: Document
     }
 
     // Split on soft line breaks, tracking bold per piece.
-    let pieces: Array<{ text: string; boldChars: number; markChars: number; chars: number }> = [{ text: '', boldChars: 0, markChars: 0, chars: 0 }]
+    let pieces: Array<{ text: string; boldChars: number; markChars: number; underChars: number; chars: number }> = [{ text: '', boldChars: 0, markChars: 0, underChars: 0, chars: 0 }]
     for (const run of runs) {
       const parts = (run.content ?? '').replace(/\n$/, '').split('\v')
       parts.forEach((part, idx) => {
-        if (idx > 0) pieces.push({ text: '', boldChars: 0, markChars: 0, chars: 0 })
+        if (idx > 0) pieces.push({ text: '', boldChars: 0, markChars: 0, underChars: 0, chars: 0 })
         const cur = pieces[pieces.length - 1]
         cur.text += part
         const visible = part.replace(/\s/g, '').length
         cur.chars += visible
         if (run.textStyle?.bold) cur.boldChars += visible
-        if (run.textStyle?.underline || run.textStyle?.backgroundColor?.color) cur.markChars += visible
+        if (run.textStyle?.backgroundColor?.color && !isWorkflowColor(run.textStyle.backgroundColor.color.rgbColor)) cur.markChars += visible
+        if (run.textStyle?.underline) cur.underChars += visible
       })
     }
-    pieces = pieces.length ? pieces : [{ text: '', boldChars: 0, markChars: 0, chars: 0 }]
+    pieces = pieces.length ? pieces : [{ text: '', boldChars: 0, markChars: 0, underChars: 0, chars: 0 }]
 
     pieces.forEach((piece, idx) => {
       lines.push({
@@ -212,6 +229,7 @@ function linesFromBody(content: StructuralElement[] | undefined, lists: Document
         // "All of it" allows for an unformatted choice letter: "b) " + bold "Paris" counts as bold.
         bold: piece.boldChars > 0 && piece.boldChars >= piece.chars - 3,
         highlighted: piece.markChars > 0 && piece.markChars >= piece.chars - 3,
+        underlined: piece.underChars > 0 && piece.underChars >= piece.chars - 3,
         bullet: bullet && idx === 0,
         heading,
         ...(headingLevel !== undefined ? { headingLevel } : {}),

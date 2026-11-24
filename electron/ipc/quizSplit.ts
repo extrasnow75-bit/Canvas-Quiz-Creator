@@ -16,8 +16,12 @@
  */
 import { QUESTION_HEADER_RE, type DocLine } from './quizModel'
 
-/** A line that looks like quiz content, in the template format or close to it. */
-const QUESTIONISH = /^\s*(?:(?:\d{1,4}|#)\s*[).:]|(?:question|q)\s*#?\s*\d{1,4}\b|points?\s*[:=]|type\s*:)/i
+/**
+ * A line that looks like quiz content, in the template format or close to it. "4960008. Prompt"
+ * is a question copied out of Canvas with its question-bank id for a number; the rules turn it
+ * into a numbered question, so a quiz written that way must not be mistaken for notes.
+ */
+const QUESTIONISH = /^\s*(?:(?:\d{1,4}|#)\s*[).:]|\d{5,}\.\s+\S|(?:question|q)\s*#?\s*\d{1,4}\b|points?\s*[:=]|type\s*:)/i
 
 export interface QuizSection {
   /** The heading's text, or null for a Doc with no quiz headings. */
