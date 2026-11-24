@@ -57,6 +57,9 @@ const REFERENCE_FOLDER_URL = 'https://drive.google.com/drive/folders/1_FpLDLQJFX
  */
 const KB_ARTICLE_URL: string | null = null
 
+/** Where people report bugs and ask for improvements. docs.google.com is on the link allowlist. */
+const SUGGESTIONS_DOC_URL = 'https://docs.google.com/document/d/1qblbT2hRB1900n6Kzc9WkYCT8o_W583pu_UPZtWOpZ4/edit?tab=t.0'
+
 const SECTION_H = 'm-0 mb-3 text-xs font-black text-gray-600 uppercase tracking-[0.2em]'
 const LINK = 'text-blue-700 underline underline-offset-2 hover:text-blue-900'
 
@@ -331,7 +334,12 @@ export function HelpCenter({ isOpen, onClose, appVersion }: Props) {
             </div>
           </section>
 
-          <section aria-labelledby="help-ai" className="pt-4 border-t border-gray-100">
+          <section aria-labelledby="help-suggest" className="pt-8 border-t border-gray-100">
+            <h3 id="help-suggest" className={SECTION_H}>Find bugs? Have improvement requests?</h3>
+            <LinkCard href={SUGGESTIONS_DOC_URL} title="App Suggestions Document" />
+          </section>
+
+          <section aria-labelledby="help-ai">
             <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-700">
               <h3 id="help-ai" className="m-0 mb-2 text-sm font-black text-gray-900">AI model used</h3>
               <p className="m-0">
