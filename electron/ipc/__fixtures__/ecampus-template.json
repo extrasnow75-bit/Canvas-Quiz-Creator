@@ -1,0 +1,3592 @@
+{
+  "title": "Quiz Formatting Tool Example Doc",
+  "tabs": [
+    {
+      "tabProperties": {
+        "tabId": "t.0",
+        "title": "Template Quiz"
+      },
+      "documentTab": {
+        "lists": null,
+        "body": {
+          "content": [
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tabProperties": {
+        "tabId": "t.h15ib9z3qsr6",
+        "title": "Instructions"
+      },
+      "documentTab": {
+        "lists": {
+          "kix.zcboxt915rwc": {
+            "listProperties": {
+              "nestingLevels": [
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%0",
+                  "glyphSymbol": "●",
+                  "indentFirstLine": {
+                    "magnitude": 18,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 36,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%1",
+                  "glyphSymbol": "○",
+                  "indentFirstLine": {
+                    "magnitude": 54,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 72,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%2",
+                  "glyphSymbol": "■",
+                  "indentFirstLine": {
+                    "magnitude": 90,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 108,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%3",
+                  "glyphSymbol": "●",
+                  "indentFirstLine": {
+                    "magnitude": 126,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 144,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%4",
+                  "glyphSymbol": "○",
+                  "indentFirstLine": {
+                    "magnitude": 162,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 180,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%5",
+                  "glyphSymbol": "■",
+                  "indentFirstLine": {
+                    "magnitude": 198,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 216,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%6",
+                  "glyphSymbol": "●",
+                  "indentFirstLine": {
+                    "magnitude": 234,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 252,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%7",
+                  "glyphSymbol": "○",
+                  "indentFirstLine": {
+                    "magnitude": 270,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 288,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%8",
+                  "glyphSymbol": "■",
+                  "indentFirstLine": {
+                    "magnitude": 306,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 324,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "body": {
+          "content": [
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_1"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Instructions ",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "We use the ",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "Canvas Quiz Generator",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": " tool to build quizzes more quickly in Canvas. This tool requires specific formatting.\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": {
+                  "listId": "kix.zcboxt915rwc",
+                  "textStyle": {}
+                },
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Copy and paste the template for each question type in the ",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "Template Quiz tab",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": " and make your edits.\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": {
+                  "listId": "kix.zcboxt915rwc",
+                  "textStyle": {}
+                },
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "For Multiple Choice, Multiple Answer, and True/False questions, remember to use an asterisk (*) BEFORE the letter (a, b, c, etc) to indicate the correct answer(s).\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": {
+                  "listId": "kix.zcboxt915rwc",
+                  "textStyle": {}
+                },
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "If a question “",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "Type:",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "..” is listed, DO NOT remove/modify it; this is for the quiz generator.\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": {
+                  "listId": "kix.zcboxt915rwc",
+                  "textStyle": {}
+                },
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "To quickly convert auto-numbering in Word to the plain text format required in this template, see ",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "this document",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": ".\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": {
+                  "listId": "kix.zcboxt915rwc",
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "If you would like to use a question type that isn’t listed in this template, reach out to the OCD to determine how to build the question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tabProperties": {
+        "tabId": "t.iyac488twzf6",
+        "title": "Classic Quiz Question Templates"
+      },
+      "documentTab": {
+        "lists": {
+          "kix.ax9lnx0yt9m": {
+            "listProperties": {
+              "nestingLevels": [
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%0",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 18,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 36,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%1",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 54,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 72,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%2",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 90,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 108,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%3",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 126,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 144,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%4",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 162,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 180,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%5",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 198,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 216,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%6",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 234,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 252,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%7",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 270,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 288,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%8",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 306,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 324,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "body": {
+          "content": [
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Multiple Choice Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "*a) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "b) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "c) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "d) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "True/False Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "*a) True\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "b) False\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Multiple Answer Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type: MA\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "a) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "*b) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "*c) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "d) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Essay/Short Answer Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #\u000b",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "Type: E",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Fill in the Blank Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type: F (manual build)",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\u000b",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "a) Answer variation 1\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "b) Answer variation 2\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "c) Answer variation 3\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Matching Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #\u000b",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "Type: MT\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "a) Answer = Match\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "b) Answer = Match\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "c) Answer = Match\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "File Upload Template\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type: File (manual build)\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": {
+                  "listId": "kix.ax9lnx0yt9m",
+                  "textStyle": {}
+                },
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Show on-screen calculator\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": {
+                  "listId": "kix.ax9lnx0yt9m",
+                  "textStyle": {}
+                },
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Limit File number:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": {
+                  "listId": "kix.ax9lnx0yt9m",
+                  "textStyle": {}
+                },
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Restrict File Types:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Multiple Dropdowns\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type: MD (manual build)\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question or Statement \n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "[Variable1]\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Correct Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Possible Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Possible Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "[Variable2]\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Correct Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Possible Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Possible Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Text (No Question)\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type: Text only (manual build)\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Text to display:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Additional Classic Quiz Question Types\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Numeric, Formula\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "*If you’d like to use any of the question types listed above, reach out to the OCD on your project.\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "tabProperties": {
+        "tabId": "t.fn1nfdlax3ti",
+        "title": "New Quiz Question Templates"
+      },
+      "documentTab": {
+        "lists": {
+          "kix.tutrevkrgali": {
+            "listProperties": {
+              "nestingLevels": [
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%0",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 18,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 36,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%1",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 54,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 72,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%2",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 90,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 108,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%3",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 126,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 144,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%4",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 162,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 180,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%5",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 198,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 216,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%6",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 234,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 252,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%7",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 270,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 288,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                },
+                {
+                  "bulletAlignment": "START",
+                  "glyphFormat": "%8",
+                  "glyphType": "GLYPH_TYPE_UNSPECIFIED",
+                  "indentFirstLine": {
+                    "magnitude": 306,
+                    "unit": "PT"
+                  },
+                  "indentStart": {
+                    "magnitude": 324,
+                    "unit": "PT"
+                  },
+                  "startNumber": 1,
+                  "textStyle": {
+                    "underline": false
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "body": {
+          "content": [
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Multiple Choice Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "*a) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "b) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "c) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "d) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "True/False Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "*a) True\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "b) False\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Multiple Answer Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type: MA\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "a) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "*b) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "*c) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "d) Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Essay/Short Answer Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #\u000b",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "Type: E",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Matching Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #\u000b",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "Type: MT\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "a) Answer = Match\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "b) Answer = Match\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "c) Answer = Match\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Categorization Template:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type: Categorize (manual build)\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Category 1: Description\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Answer\u000b\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Category 2: Description\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Answer \n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Answer\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Answer\u000b\u000bAdditional Distractors\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Distractor\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Distractor\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Numeric Template\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type: Numeric (manual build)\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Choose 1:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Requirement: Exact response\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Answer = \n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Requirement: Margin of error\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Answer =\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "+/- = \n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type =\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Requirement: Within a range\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Range start =\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Range end =\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Requirement: Precise response\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Answer =\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Precision =\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type =\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "File Upload Template\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type: File (manual build)\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Points: #",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  },
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "#) Question\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": {
+                  "listId": "kix.tutrevkrgali",
+                  "textStyle": {}
+                },
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Show on-screen calculator\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": {
+                  "listId": "kix.tutrevkrgali",
+                  "textStyle": {}
+                },
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Limit File number:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": {
+                  "listId": "kix.tutrevkrgali",
+                  "textStyle": {}
+                },
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Restrict File Types:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Text (No Question)\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Type: Text only (manual build)\n",
+                      "textStyle": {
+                        "bold": true
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Text to display:\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "HEADING_2"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Additional New Quiz Question Types*\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "Fill in the Blank, Ordering, Hotspot, Stimulus/Passage, Numeric, Formula\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "*If you’d like to use any of the question types listed above, reach out to the OCD on your project.\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "paragraph": {
+                "bullet": null,
+                "paragraphStyle": {
+                  "namedStyleType": "NORMAL_TEXT"
+                },
+                "elements": [
+                  {
+                    "textRun": {
+                      "content": "\n",
+                      "textStyle": {
+                        "bold": null
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
