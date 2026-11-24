@@ -61,6 +61,8 @@ export type ReadDocResult =
       title: string
       tabs: TabInfo[]
       tabId: string | null
+      /** The app's own tab it opened instead of the first one, because it is the newest fixed version. */
+      openedNewest: string | null
       /** The heading level quizzes were split at, or null for a one-quiz Doc. */
       level: number | null
       /** Heading levels with questions under them, to offer as a choice. */

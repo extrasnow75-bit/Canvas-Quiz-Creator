@@ -243,7 +243,11 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
         setReformatError(null)
         setShowQuiz(null)
       }
-      setNotice(res.manualEditAt ? `Manual edit detected at ${stampOf(res.manualEditAt)}. The questions below are the Doc as it is now. The time stamp at the top of the tab may have changed.` : null)
+      const notes = [
+        res.openedNewest ? `Opened the ${res.openedNewest} tab, the newest version the app fixed. The original questions are in the Tab menu.` : null,
+        res.manualEditAt ? `Manual edit detected at ${stampOf(res.manualEditAt)}. The questions below are the Doc as it is now. The time stamp at the top of the tab may have changed.` : null,
+      ].filter(Boolean)
+      setNotice(notes.length ? notes.join(' ') : null)
       setDoc(loaded)
       setReadCount((n) => n + 1)
       return loaded

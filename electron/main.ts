@@ -23,7 +23,7 @@ import {
   type ListFilesArgs,
 } from './ipc/googleDrive'
 import { reformatDocument, problemsOf, addGuessWarnings, type DocumentFix } from './ipc/docReformat'
-import { addTabRequest, clearTabRequest, fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle, GEMINI_TAB_TITLE, type HeaderNotes } from './ipc/docsWrite'
+import { addTabRequest, clearTabRequest, fillTabRequests, isAppHeaderLine, newestAppTab, stampFor, tabUrl, uniqueTabTitle, GEMINI_TAB_TITLE, type HeaderNotes } from './ipc/docsWrite'
 import type { FixedLine as WrittenLine } from './ipc/reformat'
 import type { FixedLine, ReformatResult as RuleResult } from './ipc/reformat'
 import { docToLines, listTabs, type DocsDocument } from './ipc/docLines'
@@ -444,7 +444,9 @@ async function readQuizzes(args: { fileId: string; tabId?: string; refresh?: boo
   }
   const { doc } = lastDoc
   const tabs = listTabs(doc)
-  const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : tabs[0]?.id
+  // With no tab asked for, open the newest tab the app wrote: the fixed questions, not the original.
+  const newest = args.tabId ? null : newestAppTab(tabs, (id) => docToLines(doc, id).slice(0, 5).filter((l) => l.heading).map((l) => l.text))
+  const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : newest?.id ?? tabs[0]?.id
   const lines = docToLines(doc, tabId)
   if (lines.length > MAX_DOC_LINES) {
     throw new Error(`This tab is too long for the app to read (${lines.length.toLocaleString()} lines). Split the questions into smaller Docs or tabs, then try again.`)
@@ -458,12 +460,12 @@ async function readQuizzes(args: { fileId: string; tabId?: string; refresh?: boo
     return { index: i, title: q.title, lines: q.source, result, fixPreview: previewFixes(q.title, result, q.result, several) }
   })
   addGuessWarnings(lines, quizzes)
-  return { doc, tabs, tabId: tabId ?? null, trial, quizzes, fingerprint: `${tabId}|${trial.split.level}|${fingerprintOf(quizzes)}` }
+  return { doc, tabs, tabId: tabId ?? null, openedNewest: newest?.title ?? null, trial, quizzes, fingerprint: `${tabId}|${trial.split.level}|${fingerprintOf(quizzes)}` }
 }
 
 ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string; refresh?: boolean; level?: number | null }) => {
   try {
-    const { doc, tabs, tabId, trial, quizzes, fingerprint } = await readQuizzes(args)
+    const { doc, tabs, tabId, openedNewest, trial, quizzes, fingerprint } = await readQuizzes(args)
     shownQuizzes.set(args.fileId, fingerprint)
 
     let manualEditAt: string | null = null
@@ -477,6 +479,7 @@ ipcMain.handle('quiz:readDoc', async (_e, args: { fileId: string; tabId?: string
       title: doc.title ?? '',
       tabs,
       tabId,
+      openedNewest,
       level: trial.split.level,
       levels: trial.split.levels,
       quizzes,
