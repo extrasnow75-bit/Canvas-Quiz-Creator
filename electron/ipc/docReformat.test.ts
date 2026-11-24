@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DocLine } from './quizModel'
-import { reformatDocument, problemsOf } from './docReformat'
+import { reformatDocument, problemsOf, addGuessWarnings } from './docReformat'
+import { parseQuiz } from './quizFormat'
 
 const t = (text: string, extra: Partial<DocLine> = {}): DocLine => ({ text, bold: false, bullet: false, heading: false, ...extra })
 const h = (level: number, text: string): DocLine => ({ text, bold: false, bullet: false, heading: true, headingLevel: level })
@@ -90,5 +91,27 @@ describe('quizzes copied out of Canvas with question-bank ids', () => {
     expect(midterm.questions.map((q) => q.type)).toEqual(['multiple_choice', 'essay'])
     expect(midterm.questions[0].answers.map((c) => c.text)).toEqual(['1954', '1963'])
     expect(fix.quizzes[2].result.parsed.questions[0].answers.length).toBe(2)
+  })
+})
+
+describe('guessed answers in a Reformatted questions tab', () => {
+  it('shows the Check note as a warning on its question until the note is deleted', () => {
+    const tab = [
+      h(6, 'Check: Quiz 2 · Question 1: marked b) y correct, because it was the only highlighted choice and no choice had an asterisk. Check this is the right answer.'),
+      h(1, 'Quiz 1'),
+      t('1) Pick'), t('*a) x'), t('b) y'),
+      h(1, 'Quiz 2'),
+      t('1) Pick'), t('a) x'), t('*b) y'),
+    ]
+    const quizzes = [
+      { title: 'Quiz 1', result: parseQuiz(tab.slice(2, 5)) },
+      { title: 'Quiz 2', result: parseQuiz(tab.slice(6)) },
+    ]
+    addGuessWarnings(tab, quizzes)
+    const guessIn = (n: number) => quizzes[n].result.issues.find((i) => /^When the app tidied/.test(i.message))
+    expect(guessIn(0)).toBeUndefined()
+    const warning = guessIn(1)
+    expect(warning).toMatchObject({ question: 0 })
+    expect(warning?.message).toMatch(/^When the app tidied this Doc, it marked b\) y correct, because it was the only highlighted choice/)
   })
 })

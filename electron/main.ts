@@ -22,7 +22,7 @@ import {
   describeDriveFile,
   type ListFilesArgs,
 } from './ipc/googleDrive'
-import { reformatDocument, problemsOf, type DocumentFix } from './ipc/docReformat'
+import { reformatDocument, problemsOf, addGuessWarnings, type DocumentFix } from './ipc/docReformat'
 import { addTabRequest, clearTabRequest, fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle, GEMINI_TAB_TITLE, type HeaderNotes } from './ipc/docsWrite'
 import type { FixedLine as WrittenLine } from './ipc/reformat'
 import type { FixedLine, ReformatResult as RuleResult } from './ipc/reformat'
@@ -457,6 +457,7 @@ async function readQuizzes(args: { fileId: string; tabId?: string; refresh?: boo
     const result = parseQuiz(q.source)
     return { index: i, title: q.title, lines: q.source, result, fixPreview: previewFixes(q.title, result, q.result, several) }
   })
+  addGuessWarnings(lines, quizzes)
   return { doc, tabs, tabId: tabId ?? null, trial, quizzes, fingerprint: `${tabId}|${trial.split.level}|${fingerprintOf(quizzes)}` }
 }
 
