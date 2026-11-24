@@ -216,9 +216,12 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
       // Plans follow each quiz by its title, across tabs of the same Doc (the original and its
       // Reformatted questions tab hold the same quizzes). A different Doc starts fresh.
       const old = new Map<string, Plan>()
+      /** Quizzes that could not be ticked before because none of their questions could be read. */
+      const wasUnreadable = new Set<string>()
       if (before && before.fileId === fileId) {
         const keys = quizKeys(before.quizzes)
         plansRef.current.forEach((p, i) => p && old.set(keys[i], p))
+        before.quizzes.forEach((q, i) => q.result.questions.length === 0 && wasUnreadable.add(keys[i]))
       }
       const sameTab = !!before && before.fileId === fileId && before.tabId === res.tabId
       const keys = quizKeys(res.quizzes)
@@ -228,7 +231,9 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
           if (prev) {
             const engine = fits(q, prev.engine) || !fits(q, other(prev.engine)) ? prev.engine : other(prev.engine)
             // Checked belongs to the questions a person looked at: only kept on the same tab.
-            return { ...prev, engine, include: prev.include && q.result.questions.length > 0, checked: sameTab && prev.checked }
+            // A quiz that was greyed out only because it could not be read is ticked once it can be.
+            const include = (prev.include || wasUnreadable.has(keys[i])) && q.result.questions.length > 0
+            return { ...prev, engine, include, checked: sameTab && prev.checked }
           }
           const engine = fits(q, lastEngine) || !fits(q, other(lastEngine)) ? lastEngine : other(lastEngine)
           return { include: q.result.questions.length > 0, engine, title: q.title ?? res.title ?? name, checked: false }
@@ -343,6 +348,10 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
   const quizzes = doc?.quizzes ?? []
   const signOff = !!doc && isReformatted(doc)
   const chosen = quizzes.filter((_, i) => plans[i]?.include)
+  /** Quizzes with no question the app can read now, but some once the automatic fixes run. */
+  const unreadable = quizzes.filter((q) => q.result.questions.length === 0 && q.fixPreview.questionsAfterFix > 0)
+  /** Quizzes with no question the app can find at all, even after the automatic fixes. */
+  const empty = quizzes.filter((q) => q.result.questions.length === 0 && q.fixPreview.questionsAfterFix === 0)
 
   const engineSummary = (e: QuizEngine) => {
     const quizFit = quizzes.filter((q) => fits(q, e)).length
@@ -359,7 +368,8 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
       problems: included.reduce((n, q) => n + q.fixPreview.problems, 0),
       auto: included.reduce((n, q) => n + q.fixPreview.autoFixable, 0),
       person: included.reduce((n, q) => n + q.fixPreview.needsPerson, 0),
-      anyChange: included.some((q) => q.fixPreview.anyChange),
+      // A quiz that cannot be ticked until it is tidied still counts: tidying is how it becomes tickable.
+      anyChange: included.some((q) => q.fixPreview.anyChange) || quizzes.some((q) => q.result.questions.length === 0 && q.fixPreview.questionsAfterFix > 0),
       missingPoints: included.reduce((n, q) => n + q.fixPreview.missingPoints, 0),
       ready: included.reduce(
         (n, q) => n + q.result.questions.filter((_, qi) => !q.result.issues.some((x) => x.severity === 'error' && x.question === qi)).length,
@@ -367,6 +377,7 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
       ),
     }
   }, [quizzes, plans])
+  const tidyLabel = totals.auto > 0 ? `Fix ${totals.auto} automatically` : 'Tidy the formatting automatically'
 
   const dp = Number(defaultPoints)
   const pointsInvalid = defaultPoints.trim() !== '' && !(Number.isFinite(dp) && dp >= 0 && dp <= 1000)
@@ -584,6 +595,33 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
               })}
             </div>
 
+            {/* Why some rows are greyed out, and what to do about it. */}
+            {(unreadable.length > 0 || empty.length > 0) && (
+              <div id={`${id}-greyed`} className="mt-3 p-3.5 bg-amber-50 border-2 border-amber-300 rounded-xl text-[12.5px] text-gray-900">
+                <p className="m-0 flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-700" aria-hidden="true" />
+                  <span>
+                    <b>Why some quizzes are greyed out.</b>{' '}
+                    {unreadable.length > 0 && (
+                      <>
+                        The app cannot read the questions in {unreadable.length === 1 ? '1 quiz' : `${unreadable.length} quizzes`} the way they are
+                        written now (for example, questions copied from Canvas without numbers or answer letters), so{' '}
+                        {unreadable.length === 1 ? 'it' : 'they'} cannot be ticked yet. Choose <b>{tidyLabel}</b> in step 3.
+                        It writes a <b>Reformatted questions</b> tab that the app can read, and opens it, so these quizzes can be ticked.{' '}
+                      </>
+                    )}
+                    {empty.length > 0 && (
+                      <>
+                        {empty.length === 1 ? 'One quiz has' : `${empty.length} quizzes have`} no questions the app can find, even after tidying:
+                        put {empty.length === 1 ? 'its' : 'their'} questions in the template format in the Doc, then choose <b>Read again</b> in step 1.{' '}
+                      </>
+                    )}
+                    Any quiz you untick is greyed out too, and is not created.
+                  </span>
+                </p>
+              </div>
+            )}
+
             {/* One row per quiz */}
             <div className="mt-3 border border-gray-200 rounded-xl overflow-x-auto">
               <table className="w-full min-w-[520px] text-[13px] border-collapse">
@@ -606,7 +644,8 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
                     return (
                       <tr key={quizKeys(quizzes)[i]} className={`border-t border-gray-200 align-top ${p.include ? '' : 'opacity-60'}`}>
                         <td className="px-2.5 py-2.5">
-                          <input type="checkbox" checked={p.include} disabled={n === 0} onChange={(e) => setPlan(i, { include: e.target.checked })} aria-label={`Include ${p.title}`} className="w-4 h-4 accent-brand" />
+                          <input type="checkbox" checked={p.include} disabled={n === 0} onChange={(e) => setPlan(i, { include: e.target.checked })} aria-label={`Include ${p.title}`}
+                            aria-describedby={n === 0 ? `${id}-greyed` : undefined} title={n === 0 ? 'The app cannot read this quiz’s questions yet. See the note above.' : undefined} className="w-4 h-4 accent-brand" />
                         </td>
                         <td className="px-2 py-2">
                           <label className="sr-only" htmlFor={`${id}-t${i}`}>Title of quiz {i + 1}</label>
@@ -626,6 +665,8 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
                         <td className="px-2 py-2.5">
                           {n === 0 && q.fixPreview.questionsAfterFix === 0 ? (
                             <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-gray-100 text-gray-800">NO QUESTIONS</span>
+                          ) : n === 0 ? (
+                            <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">NEEDS TIDYING</span>
                           ) : toFix === 0 ? (
                             <span className="inline-flex items-center gap-1 text-[12px] font-black text-green-800"><CheckCircle2 className="w-3.5 h-3.5 text-green-600" aria-hidden="true" /> Ready</span>
                           ) : (
@@ -731,7 +772,7 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
               <button onClick={() => void runReformat(false)} disabled={busy || !ready || pointsInvalid || (!totals.anyChange && totals.problems === 0 && !(totals.missingPoints > 0 && pointsValue !== null))}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand hover:bg-brand-dark text-white text-[13px] font-black disabled:bg-gray-200 disabled:text-gray-700 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
                 {reformatBusy === 'rules' ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Wand2 className="w-4 h-4" aria-hidden="true" />}
-                {reformatBusy === 'rules' ? 'Fixing…' : totals.auto > 0 ? `Fix ${totals.auto} automatically` : 'Tidy the formatting automatically'}
+                {reformatBusy === 'rules' ? 'Fixing…' : tidyLabel}
               </button>
               <span className="text-xs text-gray-600">No AI. Writes a new “Reformatted questions” tab in the Doc, with changes highlighted; the original is not changed.</span>
             </div>
