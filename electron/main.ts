@@ -168,6 +168,11 @@ ipcMain.handle('credentials:geminiKeyStatus', (): CredentialStatus => geminiKeyS
 
 /** Hosts approved in the native dialog during this run. Every launch asks again for a new one. */
 const approvedHosts = new Set<string>()
+/**
+ * The site the app fills in itself (DEFAULT_SITE in courseFilter.ts). The dialog guards against a
+ * mistyped or planted address, which this is not, so it is never asked about.
+ */
+const BUILT_IN_HOST = 'boisestatecanvas.instructure.com'
 let confirmOpen = false
 
 /**
@@ -212,7 +217,7 @@ ipcMain.handle('canvas:listCourses', async (e, args: { site: string }) => {
   const host = new URL(origin).host
   const current = savedOrigin()
   const currentHost = current ? new URL(current).host : undefined
-  if (host !== currentHost && !approvedHosts.has(host)) {
+  if (host !== currentHost && host !== BUILT_IN_HOST && !approvedHosts.has(host)) {
     if (!(await confirmCanvasHost(windowFor(e), host))) {
       return { ok: false as const, message: 'Cancelled. No courses were loaded.' }
     }

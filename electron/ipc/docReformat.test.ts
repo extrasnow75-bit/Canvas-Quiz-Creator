@@ -53,3 +53,42 @@ describe('default points across a Doc', () => {
     expect(fix.changes.filter((c) => /no points/.test(c.message)).map((c) => c.message)).toEqual(['Quiz A · Gave 1 question with no points 2 points each (the number you chose).'])
   })
 })
+
+describe('quizzes copied out of Canvas with question-bank ids', () => {
+  // Quizzes numbered "4960008." used to be taken for notes, so only the template quizzes were listed.
+  const doc = [
+    h(1, '01.12 Quiz: Chapter 01'),
+    t('Points: 1'),
+    t('1) Which term means freedom?'),
+    t('a) independence'),
+    t('*b) freedom'),
+    t('=== End of Quiz ==='),
+    h(1, '03.08 Midterm'),
+    t('Quiz Title: 03.08 Midterm'),
+    t('--- Questions ---'),
+    t('4960009. A peak moment occurred in what year?'),
+    t('1954'),
+    t('*1963'),
+    t('4958658. What name do you prefer to go by?'),
+    t('####'),
+    t('=== End of Quiz ==='),
+    h(1, '04.08 Quiz'),
+    t('4960879. Do scholars have more or less positive views?'),
+    t('*More'),
+    t('Less'),
+    t('=== End of Quiz ==='),
+  ]
+  const fix = reformatDocument(doc)
+
+  it('finds every quiz', () => {
+    expect(fix.quizzes.map((q) => q.title)).toEqual(['01.12 Quiz: Chapter 01', '03.08 Midterm', '04.08 Quiz'])
+  })
+
+  it('stops the choices at the end-of-quiz line and makes "####" an essay', () => {
+    const midterm = fix.quizzes[1].result.parsed
+    expect(midterm.issues.filter((i) => i.severity === 'error')).toEqual([])
+    expect(midterm.questions.map((q) => q.type)).toEqual(['multiple_choice', 'essay'])
+    expect(midterm.questions[0].answers.map((c) => c.text)).toEqual(['1954', '1963'])
+    expect(fix.quizzes[2].result.parsed.questions[0].answers.length).toBe(2)
+  })
+})

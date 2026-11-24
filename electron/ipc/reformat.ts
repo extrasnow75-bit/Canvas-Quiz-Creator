@@ -86,6 +86,10 @@ const CANVAS_HEADER_PTS = /^question\s+(\d{1,4})\s+(\d+(?:\.\d+)?)\s*(?:pts?\.?|
 const CANVAS_HEADER_COMPACT = /^question\s+(\d{2,6})\s*(?:pts?\.?|points?)$/i
 /** "48213. Prompt": a Canvas question-bank id in place of a question number. */
 const CANVAS_BANK_ID = /^(\d{5,})\.\s+(.+)$/
+/** "=== End of Quiz ===": closes the quiz, so nothing after it is read as an unlettered choice. */
+const QUIZ_END = /^=+\s*end\s+of\s+quiz\s*=+$/i
+/** "####" under a question copied from Canvas: the space for a written answer, so an essay. */
+const ESSAY_SPACE = /^#{3,}$/
 /** A question that runs on to the next line: it ends on a word that cannot end a sentence. */
 const RUNS_ON = /\b(?:be|on|in|of|to|that|which|when|with|and|or|not|may|the|a|an|is|are|was|were)$/i
 
@@ -270,6 +274,14 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
       continue
     }
 
+    if (QUIZ_END.test(l.text)) {
+      if (current) {
+        current.trailing.push(l)
+        current.canvasStyle = false
+      } else preamble.push(l)
+      continue
+    }
+
     if (l.heading && !QUESTION_HEADER_RE.test(l.text)) {
       // A heading between questions is a section title; keep it where it was.
       if (current) current.body.push(l)
@@ -337,6 +349,11 @@ export function reformatQuiz(input: DocLine[]): ReformatResult {
     if (current.canvasStyle && current.text !== '' && !l.heading && current.body.length === 0 && current.choices.every((c) => !c.lettered)) {
       if (current.choices.length === 0 && RUNS_ON.test(current.text) && !l.text.startsWith('*')) {
         current.text = `${current.text} ${l.text}`
+        continue
+      }
+      if (ESSAY_SPACE.test(l.text) && current.choices.length === 0) {
+        if (!current.type) current.type = { text: 'Type: E', orig: '' }
+        noteFormat('Made questions with a "####" answer space essay questions')
         continue
       }
       const starred = l.text.startsWith('*')
