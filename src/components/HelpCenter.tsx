@@ -1,5 +1,5 @@
-import { useState, type RefObject } from 'react'
-import { ExternalLink, X } from 'lucide-react'
+import { useState, type ReactNode, type RefObject } from 'react'
+import { ChevronRight, ExternalLink, RefreshCw, X } from 'lucide-react'
 import type { ManualCheckResult } from '../types'
 import { useDialogFocus } from '../hooks/useDialogFocus'
 
@@ -49,150 +49,296 @@ const TYPES: Array<[string, string]> = [
  */
 const REFERENCE_FOLDER_URL = 'https://drive.google.com/drive/folders/1_FpLDLQJFXBKk3Rf1HXsM9l3bXMy40rF?usp=sharing'
 
-/** A drawer from the right: the format, reference documents, and the version. */
-export function HelpCenter({ isOpen, onClose, returnFocusTo, appVersion }: Props) {
+/**
+ * The eCampus KB article for this app. Not written yet: while this is null the card says
+ * "coming soon" instead of linking anywhere, because a link that 404s is worse than none.
+ * When it is published, put its URL here (its host, boisestateecampus.atlassian.net, is already
+ * on the allowlist in electron/ipc/externalLinks.ts).
+ */
+const KB_ARTICLE_URL: string | null = null
+
+const SECTION_H = 'm-0 mb-3 text-xs font-black text-gray-600 uppercase tracking-[0.2em]'
+const LINK = 'text-blue-700 underline underline-offset-2 hover:text-blue-900'
+
+/** A section that opens and closes with a caret. Closed to start, so the panel can be scanned. */
+function Dropdown({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
+  return (
+    <details className="group bg-gray-50 border border-gray-200 rounded-2xl">
+      <summary className="flex items-center gap-2 cursor-pointer list-none [&::-webkit-details-marker]:hidden px-4 py-3 rounded-2xl hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+        <ChevronRight className="w-4 h-4 flex-shrink-0 text-gray-700 transition-transform group-open:rotate-90" aria-hidden="true" />
+        <span className="text-sm font-black text-gray-900">{title}</span>
+        {note && <span className="ml-auto text-[10.5px] font-black uppercase tracking-wider text-gray-600">{note}</span>}
+      </summary>
+      <div className="px-4 pb-4 pt-1 space-y-3 text-sm text-gray-700">{children}</div>
+    </details>
+  )
+}
+
+function LinkCard({ href, title, detail }: { href: string; title: string; detail?: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="flex items-center justify-between gap-3 p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-2xl transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+    >
+      <span className="min-w-0">
+        <b className="block text-sm text-blue-900">{title}</b>
+        {detail && <small className="block text-xs text-gray-700 mt-0.5">{detail}</small>}
+      </span>
+      <ExternalLink className="w-4 h-4 flex-shrink-0 text-blue-700" aria-hidden="true" />
+      <span className="sr-only">(opens in your browser)</span>
+    </a>
+  )
+}
+
+/** A drawer from the right: updates, setup, reference material, the format, and the AI model. */
+export function HelpCenter({ isOpen, onClose, appVersion }: Props) {
   const panelRef = useDialogFocus<HTMLDivElement>(isOpen, onClose)
   const [check, setCheck] = useState<ManualCheckResult | 'checking' | null>(null)
 
   if (!isOpen) return null
 
+  const runCheck = async () => {
+    if (check === 'checking') return
+    setCheck('checking')
+    setCheck(await window.api.app.checkUpdateNow().catch(() => ({ state: 'check-failed', current: appVersion }) as ManualCheckResult))
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" aria-hidden="true" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" aria-hidden="true" onClick={onClose} />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="help-title"
-        className="relative w-full max-w-md h-full bg-white shadow-xl flex flex-col"
+        className="relative w-full sm:w-[420px] h-full bg-white shadow-2xl flex flex-col"
       >
-        <div className="flex items-center justify-between px-4 py-3 bg-brand text-white">
-          <h2 id="help-title" className="font-black text-[15px] m-0">
-            Help Center &amp; More
-          </h2>
-          <button onClick={onClose} aria-label="Close Help Center" className="p-1 rounded hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white">
-            <X className="w-5 h-5" aria-hidden="true" />
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 id="help-title" className="m-0 text-xl font-black text-gray-900 tracking-tight uppercase">
+              Help Center
+            </h2>
+            <p className="m-0 text-[10px] font-black text-blue-700 uppercase tracking-widest">IDS Toolkit</p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close Help Center"
+            className="p-2 rounded-full text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <X className="w-6 h-6" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-5 text-[13px] text-gray-700">
-          <section>
-            <h3 className="font-black text-sm text-gray-900 mb-1.5">How to format questions</h3>
-            <p className="mb-2">
-              Use the eCampus quiz template. <b className="text-gray-900">Points:</b> and <b className="text-gray-900">Type:</b> go above
-              each question, the question starts with its number and a parenthesis, and an asterisk goes{' '}
-              <b className="text-gray-900">before</b> the letter of each correct answer.
-            </p>
-            <pre className="bg-slate-50 border border-gray-200 rounded-xl p-3 text-[12px] font-mono text-gray-900 whitespace-pre-wrap select-text">
-              {FORMAT_EXAMPLE}
-            </pre>
-          </section>
-
-          <section>
-            <h3 className="font-black text-sm text-gray-900 mb-1.5">Question types</h3>
-            <table className="w-full text-[12.5px] border-collapse">
-              <tbody>
-                {TYPES.map(([code, meaning]) => (
-                  <tr key={code} className="border-t border-gray-200 align-top">
-                    <th scope="row" className="text-left font-black text-gray-900 py-1.5 pr-3 whitespace-nowrap">
-                      {code}
-                    </th>
-                    <td className="py-1.5">{meaning}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="mt-2 text-xs text-gray-600">
-              Automatic numbering in Google Docs is fine: the app reads the numbers Docs shows. If the Doc has tabs, choose the tab with
-              the questions.
-            </p>
-          </section>
-
-          <section aria-labelledby="ref-docs-h">
-            <h3 id="ref-docs-h" className="font-black text-sm text-gray-900 mb-2">Reference documents</h3>
-            <a
-              href={REFERENCE_FOLDER_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-start justify-between gap-3 p-3 bg-slate-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-200 rounded-xl transition group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              <span className="min-w-0">
-                <b className="block text-[13px] text-gray-900 group-hover:text-brand">Quiz reference documents (Google Drive folder)</b>
-                <small className="block text-xs text-gray-600 mt-0.5">
-                  The Classic and New Quizzes templates, the Quiz Questions Extraction Template, converting numbered lists, the Classic and New
-                  Quizzes comparison, and how the app fixes poor formatting.
-                </small>
-              </span>
-              <ExternalLink className="w-4 h-4 flex-shrink-0 mt-0.5 text-gray-600 group-hover:text-brand" aria-label="Opens in your browser" />
-            </a>
-          </section>
-
-          <section>
-            <h3 className="font-black text-sm text-gray-900 mb-1.5">Before students see it</h3>
-            <p>
-              Quizzes are always created unpublished. Open each one in Canvas, check it, set the due date and availability, then
-              publish it.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="font-black text-sm text-gray-900 mb-1.5">Google sign-in</h3>
-            <ul className="list-disc pl-5 space-y-1 m-0">
-              <li>
-                <b>Google asks you to sign in again about once a week.</b> That is expected: Google ends sign-ins weekly for apps
-                still in testing. Open Initial setup and choose Sign in with Google.
-              </li>
-              <li>
-                <b>Google shows a warning the first time you sign in.</b> Choose <b>Advanced</b>, then{' '}
-                <b>Go to Canvas Quiz Creator</b>. The app has not been through Google’s public review, which internal use does not
-                need.
-              </li>
-              <li>
-                <b>On the Google screen that asks what to allow, tick every box.</b> The app needs to read your Google Drive and edit
-                Google Docs. If a box is left unticked, it asks you to sign in again.
-              </li>
-            </ul>
-          </section>
-
-          <section>
-            <h3 className="font-black text-sm text-gray-900 mb-1.5">AI model used</h3>
-            <p>
-              <b className="text-gray-900">gemini-3.8-flash</b>, only when you ask for it: laying out questions the app’s rules could not fix,
-              and changes you describe in plain English. Its work goes into a separate <b className="text-gray-900">Revised by Gemini</b> tab.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="font-black text-sm text-gray-900 mb-1.5">Version</h3>
-            <p className="mb-2">Canvas Quiz Creator {appVersion || '—'}</p>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={async () => {
-                  setCheck('checking')
-                  setCheck(await window.api.app.checkUpdateNow().catch(() => ({ state: 'check-failed', current: appVersion }) as ManualCheckResult))
-                }}
-                disabled={check === 'checking'}
-                className="text-xs font-bold text-gray-700 border border-gray-500 rounded-lg px-3 py-1.5 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                Check for updates
-              </button>
-              <span role="status" className="text-xs">
-                {check === 'checking'
-                  ? 'Checking…'
-                  : check?.state === 'up-to-date'
-                    ? 'You have the latest version.'
-                    : check?.state === 'update-available'
-                      ? `Version ${check.latest} is available.`
-                      : check?.state === 'check-failed'
-                        ? 'Could not check just now.'
-                        : ''}
-              </span>
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          {/* Updates first, so "am I on the current version?" is answered without reading past anything. */}
+          <section aria-labelledby="help-updates">
+            <h3 id="help-updates" className={SECTION_H}>Version &amp; updates</h3>
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl space-y-3 text-sm text-gray-700">
+              <p className="m-0">
+                You are running <b className="text-gray-900">version {appVersion || '—'}</b>. The app checks for a newer version each time it
+                starts and shows a bar across the top of the window if there is one. Updates are never installed automatically.
+              </p>
+              <div className="flex flex-wrap items-start gap-2">
+                <button
+                  onClick={() => void runCheck()}
+                  aria-disabled={check === 'checking' || undefined}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
+                    check === 'checking' ? 'bg-gray-200 text-gray-700 cursor-wait' : 'bg-brand text-white hover:bg-brand-dark'
+                  }`}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${check === 'checking' ? 'animate-spin' : ''}`} aria-hidden="true" />
+                  {check === 'checking' ? 'Checking…' : 'Check for updates'}
+                </button>
+                <button
+                  onClick={() => void window.api.app.openReleases()}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-400 bg-white px-3 py-1.5 text-sm font-bold text-gray-700 hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+                  View all versions on GitHub
+                  <span className="sr-only">(opens in your browser)</span>
+                </button>
+              </div>
+              <div role="status" aria-live="polite">
+                {check !== null && check !== 'checking' && check.state === 'up-to-date' && (
+                  <p className="m-0 font-bold text-green-800">You’re up to date: v{check.current} is the latest version.</p>
+                )}
+                {check !== null && check !== 'checking' && check.state === 'update-available' && (
+                  <p className="m-0 font-bold text-blue-900">
+                    Version {check.latest} is available. Use <b>View all versions on GitHub</b> to download it.
+                  </p>
+                )}
+                {check !== null && check !== 'checking' && check.state === 'check-failed' && (
+                  <p className="m-0 font-bold text-amber-800">
+                    Couldn’t reach GitHub, so this could not be checked. Try again, or open the versions page.
+                  </p>
+                )}
+              </div>
             </div>
-            {check && check !== 'checking' && check.state === 'update-available' && (
-              <button onClick={() => void window.api.app.openReleases()} className="mt-2 text-xs font-black text-brand underline underline-offset-2">
-                Open the download page
-              </button>
-            )}
+          </section>
+
+          <section aria-labelledby="help-setup">
+            <h3 id="help-setup" className={SECTION_H}>Setup</h3>
+            <div className="space-y-2.5">
+              <Dropdown title="Google sign-in">
+                <p className="m-0 p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900">
+                  <b>Google sign-in is open to a limited list of users.</b> To be added to the list, email{' '}
+                  <b className="select-text">gregsnow@boisestate.edu</b>.
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5 m-0">
+                  <li>
+                    <b className="text-gray-900">Google shows a warning the first time you sign in.</b> Choose <b>Advanced</b>, then{' '}
+                    <b>Go to Canvas Quiz Creator</b>. The app has not been through Google’s public review, which internal use does not need.
+                  </li>
+                  <li>
+                    <b className="text-gray-900">On the Google screen that asks what to allow, tick every box.</b> The app needs to read your
+                    Google Drive and edit Google Docs. If a box is left unticked, it asks you to sign in again.
+                  </li>
+                  <li>
+                    <b className="text-gray-900">Google asks you to sign in again about once a week.</b> That is expected: Google ends sign-ins
+                    weekly for apps still in testing. Open Initial setup and choose Sign in with Google.
+                  </li>
+                </ul>
+              </Dropdown>
+
+              <Dropdown title="Canvas setup">
+                <p className="m-0 font-black text-gray-900">How to generate a Canvas access token</p>
+                <ol className="list-decimal pl-5 space-y-1 m-0">
+                  <li>Log into Canvas.</li>
+                  <li>
+                    Go to <b>Account → Settings</b>.
+                  </li>
+                  <li>
+                    Scroll to <b>Approved Integrations</b>.
+                  </li>
+                  <li>
+                    Click <b>+ New Access Token</b>.
+                  </li>
+                  <li>
+                    Give it a name and click <b>Generate Token</b>.
+                  </li>
+                  <li>Copy the token and paste it into the app.</li>
+                </ol>
+                <p className="m-0 text-xs text-gray-600">
+                  Source:{' '}
+                  <a
+                    href="https://community.instructure.com/en/kb/articles/662901-how-do-i-manage-api-access-tokens-in-my-user-account"
+                    target="_blank"
+                    rel="noreferrer"
+                    className={LINK}
+                  >
+                    How do I manage API access tokens in my user account?
+                  </a>
+                </p>
+              </Dropdown>
+
+              <Dropdown title="AI setup" note="Optional">
+                <p className="m-0">
+                  Only needed for the Gemini features: laying out questions the app’s rules could not fix, and changes you describe in plain
+                  English. Everything else works without a key.
+                </p>
+                <p className="m-0 font-black text-gray-900">How to get a Gemini API key</p>
+                <ol className="list-decimal pl-5 space-y-1 m-0">
+                  <li>
+                    Go to{' '}
+                    <a href="https://aistudio.google.com" target="_blank" rel="noreferrer" className={LINK}>
+                      Google AI Studio
+                    </a>
+                    .
+                  </li>
+                  <li>Sign in with your Google or SSO account, such as your Boise State University email.</li>
+                  <li>
+                    Create the key:
+                    <ol className="list-[lower-alpha] pl-5 space-y-1 mt-1">
+                      <li>
+                        Click <b>Get API key</b> on the left.
+                      </li>
+                      <li>
+                        Click the <b>Create API key</b> button.
+                      </li>
+                    </ol>
+                  </li>
+                  <li>A string of letters and numbers appears. Copy it immediately.</li>
+                  <li>Go back to the app and paste it into Initial setup.</li>
+                </ol>
+                <p className="m-0 text-xs text-gray-600">
+                  Source:{' '}
+                  <a
+                    href="https://docs.google.com/document/d/1Ce1gOTozOD3TGd8ntPz3oEWJjU-Y07K2akuIJHXnzHk/edit?tab=t.0#heading=h.xaazhwt982j4"
+                    target="_blank"
+                    rel="noreferrer"
+                    className={LINK}
+                  >
+                    What a Gemini API Key Is, and How and Why to Get One
+                  </a>
+                </p>
+              </Dropdown>
+            </div>
+          </section>
+
+          <section aria-labelledby="help-resources">
+            <h3 id="help-resources" className={SECTION_H}>Resources &amp; training</h3>
+            <div className="space-y-2.5">
+              {KB_ARTICLE_URL ? (
+                <LinkCard href={KB_ARTICLE_URL} title="Canvas Quiz Creator — KB Article" />
+              ) : (
+                <div className="p-4 bg-gray-50 border border-dashed border-gray-300 rounded-2xl">
+                  <p className="m-0 text-sm font-bold text-gray-700">Canvas Quiz Creator — KB Article (coming soon)</p>
+                  <p className="m-0 mt-1 text-xs text-gray-600">The setup and troubleshooting guide is being written. It will appear here once it is published.</p>
+                </div>
+              )}
+              <LinkCard
+                href={REFERENCE_FOLDER_URL}
+                title="Quiz reference documents (Google Drive folder)"
+                detail="The Classic and New Quizzes templates, the Quiz Questions Extraction Template, converting numbered lists, the Classic and New Quizzes comparison, and how the app fixes poor formatting."
+              />
+            </div>
+          </section>
+
+          <section aria-labelledby="help-format">
+            <h3 id="help-format" className={SECTION_H}>Question types &amp; formatting</h3>
+            <div className="space-y-2.5">
+              <Dropdown title="How to format questions">
+                <p className="m-0">
+                  Use the eCampus quiz template. <b className="text-gray-900">Points:</b> and <b className="text-gray-900">Type:</b> go above each
+                  question, the question starts with its number and a parenthesis, and an asterisk goes <b className="text-gray-900">before</b> the
+                  letter of each correct answer.
+                </p>
+                <pre className="m-0 bg-white border border-gray-200 rounded-xl p-3 text-[12px] font-mono text-gray-900 whitespace-pre-wrap select-text">
+                  {FORMAT_EXAMPLE}
+                </pre>
+                <p className="m-0 text-xs text-gray-600">
+                  Automatic numbering in Google Docs is fine: the app reads the numbers Docs shows. A Doc the app has already fixed opens on
+                  its newest fixed tab.
+                </p>
+              </Dropdown>
+
+              <Dropdown title="Question types">
+                <table className="w-full text-[12.5px] border-collapse">
+                  <tbody>
+                    {TYPES.map(([code, meaning]) => (
+                      <tr key={code} className="border-t border-gray-200 align-top">
+                        <th scope="row" className="text-left font-black text-gray-900 py-1.5 pr-3 whitespace-nowrap">
+                          {code}
+                        </th>
+                        <td className="py-1.5">{meaning}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Dropdown>
+            </div>
+          </section>
+
+          <section aria-labelledby="help-ai" className="pt-4 border-t border-gray-100">
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm text-gray-700">
+              <h3 id="help-ai" className="m-0 mb-2 text-sm font-black text-gray-900">AI model used</h3>
+              <p className="m-0">
+                <b className="text-gray-900">gemini-3.8-flash</b>, only when you ask for it: laying out questions the app’s rules could not fix,
+                and changes you describe in plain English. Its work goes into a separate <b className="text-gray-900">Revised by Gemini</b> tab.
+              </p>
+            </div>
           </section>
         </div>
       </div>

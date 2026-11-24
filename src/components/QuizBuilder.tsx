@@ -790,6 +790,64 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
       {/* 4 · Courses */}
       <MultiCoursePicker selected={courses} onChange={setCourses} site={site} onSiteChange={onSiteChange} onTokenResult={onTokenResult} />
 
+      {/* What Launch will do, in one place, so nothing has to be remembered from steps 1 to 4. */}
+      {doc && (
+        <section aria-labelledby={`${id}-sum`} className="bg-white border-2 border-gray-300 rounded-2xl p-4">
+          <h2 id={`${id}-sum`} className="m-0 mb-3 text-[15px] font-black text-gray-900">Ready to launch</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <h3 className="m-0 mb-1.5 text-[11px] font-black tracking-wider text-gray-700">
+                {chosen.length === 1 ? '1 QUIZ' : `${chosen.length} QUIZZES`}
+              </h3>
+              {chosen.length === 0 ? (
+                <p className="m-0 text-[13px] text-gray-700">None included yet. Include a quiz in step 2.</p>
+              ) : (
+                <ul className="m-0 p-0 list-none space-y-1.5">
+                  {chosen.map((q) => {
+                    const p = plans[quizzes.indexOf(q)]
+                    return (
+                      <li key={q.index} className="text-[13px] text-gray-900">
+                        <b className="block">{p?.title.trim() || 'Untitled quiz'}</b>
+                        <span className="text-xs text-gray-700">
+                          {p ? ENGINE_NAME[p.engine].replace(/zes$/, 'z') : ''} · {plural(q.result.questions.length, 'question')}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+            <div>
+              <h3 className="m-0 mb-1.5 text-[11px] font-black tracking-wider text-gray-700">
+                {courses.length === 1 ? 'TO 1 COURSE' : `TO ${courses.length} COURSES`}
+              </h3>
+              {courses.length === 0 ? (
+                <p className="m-0 text-[13px] text-gray-700">None ticked yet. Tick a course in step 4.</p>
+              ) : (
+                <ul className="m-0 p-0 list-none space-y-1.5">
+                  {courses.map((c) => (
+                    <li key={c.id} className="text-[13px] text-gray-900">
+                      <b className="block">{c.name}</b>
+                      <span className="text-xs text-gray-700">
+                        {c.code}
+                        {c.blueprint && ' · Sandbox course'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+          {chosen.length > 0 && courses.length > 0 && (
+            <p className="m-0 mt-3 pt-3 border-t border-gray-200 text-xs text-gray-700">
+              {chosen.length * courses.length === 1
+                ? 'Launch creates 1 unpublished quiz.'
+                : `Launch creates ${chosen.length * courses.length} unpublished quizzes: each quiz in each course.`}
+            </p>
+          )}
+        </section>
+      )}
+
       {dupConfirm && (
         <div role="alert" aria-labelledby={`${id}-dup-text`} onKeyDown={(e) => e.key === 'Escape' && setDupConfirm(null)}
           className="p-3.5 bg-amber-50 border-2 border-amber-300 rounded-xl">
