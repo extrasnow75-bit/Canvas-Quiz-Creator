@@ -18,7 +18,7 @@ import type { DocLine } from './quizModel'
 // The parts of the Docs API response this reads. Everything else is ignored.
 interface TextRun {
   content?: string
-  textStyle?: { bold?: boolean; underline?: boolean; backgroundColor?: { color?: unknown } }
+  textStyle?: { bold?: boolean; underline?: boolean; backgroundColor?: { color?: { rgbColor?: { red?: number; green?: number; blue?: number } } } }
 }
 interface ParagraphElement {
   textRun?: TextRun
@@ -65,6 +65,22 @@ export interface TabInfo {
 }
 
 /** Every tab in the document, in order, children after their parent. */
+/**
+ * A highlight colour that means something in eCampus's own workflow, not an answer, so it never
+ * marks a choice correct. Light green is QA's "ready for Canvas" mark (Blueprint Tools), and
+ * purple is how this app's own "Revised by Gemini" tab, and other tools, mark changed lines.
+ * Google's palette leaves no doubt between these and yellow: green has more green than red or
+ * blue, purple more blue than green with at least as much red.
+ */
+export function isWorkflowColor(rgb?: { red?: number; green?: number; blue?: number }): boolean {
+  const r = rgb?.red ?? 0
+  const g = rgb?.green ?? 0
+  const b = rgb?.blue ?? 0
+  const green = g > r + 0.04 && g > b + 0.04
+  const purple = b > g + 0.04 && r >= g
+  return green || purple
+}
+
 export function listTabs(doc: DocsDocument): TabInfo[] {
   const out: TabInfo[] = []
   const walk = (tabs: DocsTab[] | undefined, depth: number) => {
@@ -200,7 +216,7 @@ function linesFromBody(content: StructuralElement[] | undefined, lists: Document
         const visible = part.replace(/\s/g, '').length
         cur.chars += visible
         if (run.textStyle?.bold) cur.boldChars += visible
-        if (run.textStyle?.backgroundColor?.color) cur.markChars += visible
+        if (run.textStyle?.backgroundColor?.color && !isWorkflowColor(run.textStyle.backgroundColor.color.rgbColor)) cur.markChars += visible
         if (run.textStyle?.underline) cur.underChars += visible
       })
     }
