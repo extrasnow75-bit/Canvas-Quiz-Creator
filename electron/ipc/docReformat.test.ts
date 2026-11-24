@@ -95,6 +95,28 @@ describe('quizzes copied out of Canvas with question-bank ids', () => {
 })
 
 describe('guessed answers in a Reformatted questions tab', () => {
+  it('reads the notes at the end of the tab, under each quiz’s title', () => {
+    const tab = [
+      h(1, 'Quiz 1'),
+      t('1) Pick'), t('*a) x'), t('b) y'),
+      h(1, 'Quiz 2'),
+      t('1) Pick'), t('a) x'), t('*b) y'),
+      h(2, 'Notes from the app'),
+      t('Things that need a person come first, then things to check.'),
+      h(3, 'Quiz 2'),
+      t('Check: Question 1: marked b) y correct, because it was the only bold choice and no choice had an asterisk. Check this is the right answer.'),
+    ]
+    const quizzes = [
+      { title: 'Quiz 1', result: parseQuiz(tab.slice(1, 4)) },
+      { title: 'Quiz 2', result: parseQuiz(tab.slice(5, 8)) },
+    ]
+    addGuessWarnings(tab, quizzes)
+    expect(quizzes[0].result.issues.some((i) => /^When the app tidied/.test(i.message))).toBe(false)
+    const warning = quizzes[1].result.issues.find((i) => /^When the app tidied/.test(i.message))
+    expect(warning).toMatchObject({ question: 0 })
+    expect(warning?.message).toMatch(/delete the “Check:” note about it under “Notes from the app” at the end of the tab\.$/)
+  })
+
   it('shows the Check note as a warning on its question until the note is deleted', () => {
     const tab = [
       h(6, 'Check: Quiz 2 · Question 1: marked b) y correct, because it was the only highlighted choice and no choice had an asterisk. Check this is the right answer.'),

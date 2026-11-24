@@ -23,7 +23,7 @@ import {
   type ListFilesArgs,
 } from './ipc/googleDrive'
 import { reformatDocument, problemsOf, addGuessWarnings, type DocumentFix } from './ipc/docReformat'
-import { addTabRequest, clearTabRequest, fillTabRequests, isAppHeaderLine, newestAppTab, stampFor, tabUrl, uniqueTabTitle, GEMINI_TAB_TITLE, type HeaderNotes } from './ipc/docsWrite'
+import { addTabRequest, clearTabRequest, fillTabRequests, withoutAppNotes, newestAppTab, stampFor, tabUrl, uniqueTabTitle, GEMINI_TAB_TITLE, type HeaderNotes } from './ipc/docsWrite'
 import type { FixedLine as WrittenLine } from './ipc/reformat'
 import type { FixedLine, ReformatResult as RuleResult } from './ipc/reformat'
 import { docToLines, listTabs, type DocsDocument } from './ipc/docLines'
@@ -452,7 +452,7 @@ async function readQuizzes(args: { fileId: string; tabId?: string; refresh?: boo
     throw new Error(`This tab is too long for the app to read (${lines.length.toLocaleString()} lines). Split the questions into smaller Docs or tabs, then try again.`)
   }
   // The Doc's quizzes, each with its questions as they are now and what the automatic fixes would do.
-  const content = lines.filter((l) => !isAppHeaderLine(l.text, l.heading))
+  const content = withoutAppNotes(lines)
   const trial = reformatDocument(content, args.level)
   const several = trial.quizzes.length > 1
   const quizzes = trial.quizzes.map((q, i) => {
@@ -593,7 +593,7 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
     }
     const tabs = listTabs(doc)
     const tabId = args.tabId && tabs.some((t) => t.id === args.tabId) ? args.tabId : tabs[0]?.id
-    const content = docToLines(doc, tabId).filter((l) => !isAppHeaderLine(l.text, l.heading))
+    const content = withoutAppNotes(docToLines(doc, tabId))
     const options = { defaultPoints: typeof args.defaultPoints === 'number' ? args.defaultPoints : null }
     let fix: DocumentFix = reformatDocument(content, args.level, undefined, options)
 
@@ -647,7 +647,7 @@ ipcMain.handle('quiz:reformat', async (_e, args: { fileId: string; tabId?: strin
     if (!args.useAi && !r.lines.some((l) => l.changed)) return { ok: true as const, nothingChanged: true as const, ...summary }
 
     const when = new Date()
-    const notes = { check, needsPerson: problems }
+    const notes = { check, needsPerson: problems, order: fix.quizzes.map((q) => q.title) }
     const docTitle = doc.title ?? 'Quiz questions'
     let target: { fileId: string; name: string; tabId: string | null; tabTitle: string; inNewDoc: boolean; why?: string } | null = null
     let revisionId: string | null = null
@@ -709,7 +709,7 @@ ipcMain.handle('quiz:proposeRevision', async (_e, args: { fileId: string; tabId:
   try {
     if (!args.instruction?.trim()) return { ok: false as const, message: 'Type the change you would like in the box first, then choose Ask Gemini for this change.' }
     const doc = (await getGoogleDocStructure(args.fileId)) as DocsDocument
-    const current = docToLines(doc, args.tabId).filter((l) => !isAppHeaderLine(l.text, l.heading))
+    const current = withoutAppNotes(docToLines(doc, args.tabId))
     if (current.length > MAX_GEMINI_LINES) {
       return { ok: false as const, message: `This tab is too long to send to Gemini in one go (${current.length.toLocaleString()} lines). Make the change by hand in the Doc, or move some quizzes to another tab first.` }
     }

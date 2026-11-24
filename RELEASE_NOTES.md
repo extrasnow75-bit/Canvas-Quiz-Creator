@@ -1,6 +1,4 @@
-## What's new in v0.2.1
+## What's new in v0.2.2
 
-- **Summary before you launch.** Below step 4, a "Ready to launch" card lists the quizzes that will be created (title, Classic or New, number of questions) and the courses they go to, with the total number of quizzes Launch will make.
-- **Reorganized Help Center.** Version and updates are at the top. Setup has Google sign-in, Canvas setup and AI setup (optional), each opening with a caret. Resources & training links the quiz reference documents in Google Drive, with a place for the KB article. Question types & formatting holds the format and the question types, also opening with a caret.
-- **Google sign-in is open to a limited list of users.** The Help Center says who to email to be added.
-- **Report bugs and request improvements** from the App Suggestions Document, linked from the Help Center.
+- **Notes at the end of the Reformatted questions tab.** The questions now come first. The app's notes are at the end, under "Notes from the app", grouped by quiz, in normal-size text, with things that need a person before things to check. The same note about several questions is written once ("Questions 1–10: …"), so a Doc that had 51 notes now has 9. A line at the top says how many notes there are. Tabs written by earlier versions still work.
+- **Why some quizzes are greyed out.** When the app cannot read the questions in a quiz as they are written (for example, questions copied from Canvas without numbers or answer letters), step 2 now says so and points to the automatic fix in step 3. Those quizzes show "NEEDS TIDYING" instead of "1 TO FIX", the fix button stays available for them, and they are ticked once tidying makes them readable.

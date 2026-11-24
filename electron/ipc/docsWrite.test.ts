@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle, clearTabRequest, newestAppTab } from './docsWrite'
+import { fillTabRequests, isAppHeaderLine, stampFor, tabUrl, uniqueTabTitle, clearTabRequest, newestAppTab, mergeNotes, groupNotes, withoutAppNotes, NOTES_TITLE } from './docsWrite'
 import { docToLines, type DocsDocument } from './docLines'
 import { reformatQuiz } from './reformat'
 
@@ -31,9 +31,21 @@ describe('writing the reformatted tab', () => {
     expect(stampFor(when)).toBe('Nov 23, 2026 at 3:15 PM')
   })
 
-  it('writes the header as headings, so the quiz reader skips it', () => {
+  it('writes a short header, pointing to the notes at the end', () => {
     expect(out.headings[0]).toMatch(/^Reformatted questions —/)
-    expect(out.headings.some((h) => h.startsWith('Check: Question 1'))).toBe(true)
+    const paras = out.text.split('\n')
+    expect(paras[2]).toBe(`1 note about what to check or fix is at the end of this tab, under “${NOTES_TITLE}”.`)
+    expect(isAppHeaderLine(paras[2], true)).toBe(true)
+  })
+
+  it('puts the notes after the questions, under their own heading', () => {
+    const paras = out.text.split('\n')
+    const notesAt = paras.indexOf(NOTES_TITLE)
+    expect(notesAt).toBeGreaterThan(paras.indexOf('*b) Jupiter'))
+    expect(out.headings).toContain(NOTES_TITLE)
+    expect(paras.slice(notesAt)).toContain('Check: Question 1: marked b) Jupiter correct, from the answer key.')
+    // The notes themselves are ordinary text, readable at normal size.
+    expect(out.headings.some((h) => h.startsWith('Check:'))).toBe(false)
   })
 
   it('highlights exactly the changed lines', () => {
@@ -63,9 +75,46 @@ describe('writing the reformatted tab', () => {
     }
     const lines = docToLines(doc)
     expect(lines.filter((l) => isAppHeaderLine(l.text, l.heading))).toHaveLength(3)
-    const again = reformatQuiz(lines.filter((l) => !isAppHeaderLine(l.text, l.heading)))
+    const questions = withoutAppNotes(lines)
+    expect(questions.some((l) => /Check:|Notes from the app/.test(l.text))).toBe(false)
+    const again = reformatQuiz(questions)
     expect(again.lines.some((l) => l.changed)).toBe(false) // already in the template format
     expect(again.parsed.questions[0].answers.find((a) => a.correct)?.text).toBe('Jupiter')
+  })
+})
+
+describe('the notes', () => {
+  it('writes the same note about several questions once', () => {
+    expect(
+      mergeNotes([
+        'Question 1: the choices had no letters.',
+        'Question 2: the choices had no letters.',
+        'Question 3: the choices had no letters.',
+        'Question 4: marked b) x correct.',
+        'Question 5: the choices had no letters.',
+        'Gave 2 questions with no points 1 point each.',
+      ]),
+    ).toEqual(['Questions 1–3, 5: the choices had no letters.', 'Question 4: marked b) x correct.', 'Gave 2 questions with no points 1 point each.'])
+  })
+
+  it('groups the notes by quiz, needing a person first', () => {
+    expect(
+      groupNotes({
+        check: ['Quiz A · Question 1: lettered.', 'Quiz A · Question 2: lettered.', 'Quiz B · Question 1: lettered.'],
+        needsPerson: ['Quiz B · Question 3: No answer is marked correct.'],
+        order: ['Quiz A', 'Quiz B'],
+      }),
+    ).toEqual([
+      { title: 'Quiz A', needsPerson: [], check: ['Questions 1–2: lettered.'] },
+      { title: 'Quiz B', needsPerson: ['Question 3: No answer is marked correct.'], check: ['Question 1: lettered.'] },
+    ])
+  })
+
+  it('writes no notes section when there is nothing to say', () => {
+    const r = reformatQuiz(['Points: 1', '1) Pick', '*a) x', 'b) y'].map((text) => ({ text, bold: false, bullet: false, heading: false })))
+    const text = (fillTabRequests('t.1', r.lines, { check: [], needsPerson: [] }, when)[0] as any).insertText.text as string
+    expect(text).not.toContain(NOTES_TITLE)
+    expect(text).not.toContain('at the end of this tab')
   })
 })
 

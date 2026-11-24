@@ -1,6 +1,6 @@
 {
   "name": "canvas-quiz-creator",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Desktop app that turns quiz questions in a Google Doc into a Canvas quiz (Classic or New Quizzes)",
   "author": "Boise State University eCampus Center",
   "private": true,

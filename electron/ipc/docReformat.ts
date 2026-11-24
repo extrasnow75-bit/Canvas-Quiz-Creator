@@ -11,6 +11,7 @@ import type { DocLine, ParseResult } from './quizModel'
 import { addDefaultPoints, reformatQuiz, type Change, type FixedLine, type ReformatResult } from './reformat'
 import { parseQuiz } from './quizFormat'
 import { splitDocument, type SplitResult } from './quizSplit'
+import { NOTES_TITLE, notesStart } from './docsWrite'
 
 export interface QuizFix {
   title: string | null
@@ -94,30 +95,56 @@ export function problemsOf(title: string | null, parsed: ParseResult, several: b
 }
 
 /**
- * Answers the app took from formatting alone, read back from the "Check:" notes at the top of a
- * Reformatted questions tab, and shown as a warning on each question.
+ * Answers the app took from formatting alone, read back from the "Check:" notes in a Reformatted
+ * questions tab, and shown as a warning on each question.
  *
  * In the tab itself a guessed answer is an ordinary "*c)" like any other, so without this the
  * guess would stop looking like one the moment the app read the tab back. The warning stays until
- * a person deletes its "Check:" line, which is what checking it means.
+ * a person deletes its "Check:" note, which is what checking it means.
+ *
+ * The notes are under "Notes from the app" at the end of the tab, with each quiz's title as a
+ * heading above its notes. Tabs written before v0.2.2 have them as headings at the top instead,
+ * each with its quiz's title in front ("Check: Quiz 2 · Question 1: …"). Both are read.
  */
-const GUESS_NOTE = /^Check:\s*(?:(.*?) · )?Question (\d+): (marked .+ correct, because it was the only .+ choice and no choice had an asterisk\..*)$/
+const GUESS_NOTE = /^Check:\s*(?:(.*?) · )?Questions? ([\d–, ]+): (marked .+ correct, because it was the only .+ choice and no choice had an asterisk\..*)$/
+
+/** [1, 2, 3, 5] from "1–3, 5". */
+function numbersIn(list: string): number[] {
+  return list.split(',').flatMap((part) => {
+    const [a, b] = part.split('–').map((x) => Number(x.trim()))
+    if (!Number.isFinite(a)) return []
+    if (b === undefined || !Number.isFinite(b) || b < a) return [a]
+    return Array.from({ length: b - a + 1 }, (_, k) => a + k)
+  })
+}
 
 export function addGuessWarnings(lines: DocLine[], quizzes: Array<{ title: string | null; result: ParseResult }>): void {
-  for (const l of lines) {
-    if (!l.heading) continue
+  const notesAt = notesStart(lines)
+  let titleAbove: string | null = null
+  lines.forEach((l, at) => {
+    const inNotes = notesAt !== -1 && at > notesAt
+    if (inNotes && l.heading) {
+      titleAbove = l.text.trim()
+      return
+    }
+    // Old tabs: headings at the top. New tabs: ordinary lines under "Notes from the app".
+    if (inNotes ? false : !l.heading) return
     const m = l.text.trim().match(GUESS_NOTE)
-    if (!m) continue
-    const [, title, number, what] = m
+    if (!m) return
+    const [, titleInLine, numbers, what] = m
+    const title = titleInLine ?? (inNotes ? titleAbove : null)
     const quiz = title ? quizzes.find((q) => q.title === title) : quizzes.length === 1 ? quizzes[0] : undefined
-    if (!quiz) continue
-    const qi = quiz.result.questions.findIndex((q) => String(q.number) === number)
-    if (qi === -1) continue
-    quiz.result.issues.push({
-      severity: 'warning',
-      message: `When the app tidied this Doc, it ${what} When you have, delete the “Check:” line about it at the top of the tab.`,
-      line: quiz.result.questions[qi].line,
-      question: qi,
-    })
-  }
+    if (!quiz) return
+    const where = inNotes ? `under “${NOTES_TITLE}” at the end of the tab` : 'at the top of the tab'
+    for (const n of numbersIn(numbers)) {
+      const qi = quiz.result.questions.findIndex((q) => String(q.number) === String(n))
+      if (qi === -1) continue
+      quiz.result.issues.push({
+        severity: 'warning',
+        message: `When the app tidied this Doc, it ${what} When you have, delete the “Check:” note about it ${where}.`,
+        line: quiz.result.questions[qi].line,
+        question: qi,
+      })
+    }
+  })
 }
