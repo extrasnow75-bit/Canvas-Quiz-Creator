@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { AlertCircle, AlertTriangle, CheckCircle2, Loader2, RefreshCw, Wand2, Sparkles, ChevronDown } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Check, CheckCircle2, Loader2, RefreshCw, Wand2, Sparkles, ChevronDown } from 'lucide-react'
 import type { CourseChoice, CourseRunStatus, DocQuiz, Question, QuizEngine, ReadDocResult, ReformatResult } from '../types'
 import type { Issue } from '../../electron/ipc/quizModel'
 import { engineIssues } from '../../electron/ipc/quizFormat'
@@ -484,7 +484,7 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
               <RefreshCw className={`w-3.5 h-3.5 ${docBusy ? 'animate-spin' : ''}`} aria-hidden="true" /> Read again
             </button>
             <button onClick={chooseAnother} disabled={reformatBusy !== null || launching} className="disabled:opacity-60 disabled:cursor-not-allowed text-xs font-bold text-gray-700 border border-gray-500 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-              Choose another
+              Choose another doc
             </button>
           </span>
         )}
@@ -629,7 +629,7 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
                           )}
                         </td>
                         <td className="px-2 py-2">
-                          <fieldset className="inline-flex rounded-lg border border-gray-500 overflow-hidden m-0 p-0">
+                          <fieldset className="inline-flex rounded-lg border-2 border-gray-600 overflow-hidden m-0 p-0 divide-x-2 divide-gray-600">
                             <legend className="sr-only">Quiz type for {p.title}</legend>
                             {(['classic', 'new'] as const).map((e) => {
                               const ok = fits(q, e)
@@ -637,11 +637,12 @@ export function QuizBuilder({ ready, onRunBusy, hasGemini, site, onSiteChange, o
                               const why = ok ? null : engineIssues(q.result.questions, e).find((x) => x.severity === 'error')?.message ?? 'No questions to build.'
                               return (
                                 <label key={e} title={why ?? ENGINE_NAME[e]}
-                                  className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-bold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-brand ${on ? 'bg-[#eef3fc] text-gray-900' : 'bg-white text-gray-700'} ${ok ? 'cursor-pointer' : 'line-through text-gray-600 cursor-not-allowed'}`}>
+                                  className={`flex items-center gap-1.5 px-2.5 py-1.5 text-[12px] font-bold has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-brand ${on ? 'bg-green-700 text-white' : ok ? 'bg-white text-gray-900 hover:bg-green-50' : 'bg-gray-100 text-gray-700'} ${ok ? 'cursor-pointer' : 'line-through cursor-not-allowed'}`}>
                                   <input type="radio" name={`${id}-engine-${i}`} className="sr-only" checked={on} disabled={!ok} onChange={() => setPlan(i, { engine: e })}
                                     aria-describedby={why ? `${id}-why-${i}-${e}` : undefined} />
                                   <IconTile color={ENGINE_TILE[e]} size={18}><Rocket engine={e} size={11} /></IconTile>
                                   {e === 'classic' ? 'Classic' : 'New'}
+                                  {on && <Check className="w-3.5 h-3.5" strokeWidth={3} aria-hidden="true" />}
                                   {why && <span id={`${id}-why-${i}-${e}`} className="sr-only">Not available: {why}</span>}
                                 </label>
                               )
